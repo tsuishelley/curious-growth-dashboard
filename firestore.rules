@@ -1,0 +1,13 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // All reads/writes go through the Next.js server (Firebase Admin SDK,
+    // using the session cookie + service account), which bypasses these
+    // rules entirely. These rules only govern *direct client SDK* access,
+    // which this app doesn't use for Firestore — so lock it down completely.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
