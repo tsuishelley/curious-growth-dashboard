@@ -15,16 +15,19 @@ export default function KpiCard({ label, value, changeFraction, changeLabel = "v
   const sources = source ? (Array.isArray(source) ? source : [source]) : [];
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-xs font-medium uppercase tracking-wide text-slate-500">{label}</p>
-      <p className="mt-2 text-2xl font-semibold text-slate-900">{value}</p>
+    <div className="border border-rule bg-paper p-5">
+      <p className="label-mono text-ink-faint">{label}</p>
+      <p className="mt-3 text-[32px] font-bold leading-none tracking-tight text-ink">{value}</p>
       {hasChange && (
-        <p className={`mt-1 text-xs font-medium ${isPositive ? "text-emerald-600" : "text-red-600"}`}>
-          {isPositive ? "▲" : "▼"} {Math.abs(changeFraction! * 100).toFixed(1)}% {changeLabel}
+        <p className={`mt-2.5 text-[11px] ${isPositive ? "text-positive" : "text-negative"}`}>
+          {isPositive ? "▲" : "▼"} {Math.abs(changeFraction! * 100).toFixed(1)}%{" "}
+          <span className="text-ink-faint">{changeLabel}</span>
         </p>
       )}
       {sources.length > 0 && (
-        <p className="mt-2 text-[11px] text-slate-400">Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}</p>
+        <p className="mt-3 text-[11px] text-ink-faint">
+          Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}
+        </p>
       )}
     </div>
   );

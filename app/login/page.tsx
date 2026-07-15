@@ -43,28 +43,28 @@ function LoginForm() {
   }
 
   return (
-    <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-      <h1 className="text-xl font-semibold text-slate-900">Curious Growth Dashboard</h1>
-      <p className="mt-2 text-sm text-slate-500">
+    <div className="w-full max-w-sm border border-rule bg-paper p-10">
+      <h1 className="font-display text-3xl leading-tight text-ink">Growth at Curious</h1>
+      <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
         Sign in with your @{ALLOWED_EMAIL_DOMAIN} account to view portfolio company metrics.
       </p>
 
       <button
         onClick={handleSignIn}
         disabled={loading}
-        className="mt-6 w-full rounded-lg bg-brand-500 px-4 py-2 text-sm font-medium text-white transition hover:bg-brand-600 disabled:opacity-50"
+        className="label-mono mt-7 w-full bg-ink px-4 py-3 text-paper transition-colors hover:bg-accent disabled:opacity-50"
       >
         {loading ? "Signing in..." : "Sign in with Google"}
       </button>
 
-      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
+      {error && <p className="mt-4 text-[11px] leading-relaxed text-accent">{error}</p>}
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50">
+    <div className="flex min-h-screen items-center justify-center bg-canvas">
       <Suspense fallback={null}>
         <LoginForm />
       </Suspense>

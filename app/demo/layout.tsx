@@ -4,28 +4,26 @@ import { portfolioCompanies } from "@/lib/config/portfolio";
 export default function DemoLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="min-h-screen">
-      <header className="border-b border-slate-200 bg-white">
-        <div className="mx-auto max-w-6xl px-6 pt-4">
-          <div className="flex items-center justify-between">
-            <h1 className="text-lg font-semibold text-slate-900">Curious Growth Dashboard</h1>
-            <span className="rounded-full bg-amber-50 px-2.5 py-1 text-xs font-medium text-amber-700">
-              Demo preview — no login, randomly generated data
-            </span>
-          </div>
+      <header className="border-b border-rule bg-paper">
+        <div className="mx-auto flex max-w-6xl items-baseline justify-between px-8 pt-10">
+          <h1 className="font-display text-4xl leading-none tracking-tight text-ink">Growth at Curious</h1>
+          <span className="label-mono bg-accent-soft px-2 py-1 text-accent">
+            Demo preview — randomly generated data
+          </span>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 px-6">
+        <nav className="mx-auto flex max-w-6xl gap-7 px-8 pt-7">
           {portfolioCompanies.map((company) => (
             <Link
               key={company.id}
               href={`/demo/${company.slug}`}
-              className="rounded-t-md border-b-2 border-transparent px-4 py-2 text-sm font-medium text-slate-500 hover:border-brand-500 hover:text-brand-600"
+              className="label-mono border-b-2 border-transparent pb-3 text-ink-faint transition-colors hover:border-accent hover:text-accent"
             >
               {company.name}
             </Link>
           ))}
         </nav>
       </header>
-      <main className="mx-auto max-w-6xl px-6 py-8">{children}</main>
+      <main className="mx-auto max-w-6xl px-8 py-10">{children}</main>
     </div>
   );
 }

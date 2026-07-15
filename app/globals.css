@@ -2,7 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Curious brand fonts. Only the weights actually used are shipped -- Domaine
+   Display has no bold cut licensed here, so headings stay at regular weight
+   rather than letting the browser synthesize a fake bold. */
+@font-face {
+  font-family: "Domaine Display";
+  src: url("/fonts/DomaineDisplay-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atlas Typewriter";
+  src: url("/fonts/AtlasTypewriter-Regular.otf") format("opentype");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Atlas Typewriter";
+  src: url("/fonts/AtlasTypewriter-Medium.otf") format("opentype");
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
 html,
 body {
   height: 100%;
+}
+
+body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+@layer components {
+  /* Small uppercase monospace label -- the recurring motif for metric names,
+     section headers, and toggles. */
+  .label-mono {
+    @apply font-mono text-[11px] uppercase tracking-[0.12em];
+  }
 }

@@ -21,9 +21,9 @@ export default function FunnelChart({ title = "Funnel", stages, source, mode = "
   const totalCount = stages.reduce((sum, s) => sum + s.count, 0);
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-white p-4">
-      <p className="text-sm font-medium text-slate-700">{title}</p>
-      <div className="mt-4 space-y-3">
+    <div className="border border-rule bg-paper p-5">
+      <p className="label-mono text-ink-faint">{title}</p>
+      <div className="mt-5 space-y-3.5">
         {stages.map((stage, i) => {
           const widthPct = stage.count === 0 ? 0 : Math.max((stage.count / maxCount) * 100, 4);
           const prev = stages[i - 1];
@@ -33,29 +33,29 @@ export default function FunnelChart({ title = "Funnel", stages, source, mode = "
 
           return (
             <div key={stage.key}>
-              <div className="flex items-center justify-between text-xs text-slate-500">
-                <span>{stage.label}</span>
-                <span>
-                  {stage.count.toLocaleString()}
+              <div className="flex items-baseline justify-between text-[11px]">
+                <span className="truncate pr-3 text-ink-muted">{stage.label}</span>
+                <span className="shrink-0">
+                  <span className="font-mono text-ink">{stage.count.toLocaleString()}</span>
                   {conversionFromPrev !== null && (
-                    <span className="ml-2 text-slate-400">
+                    <span className="ml-2 text-ink-faint">
                       ({(conversionFromPrev * 100).toFixed(1)}% of {prev.label})
                     </span>
                   )}
                   {shareOfTotal !== null && (
-                    <span className="ml-2 text-slate-400">({(shareOfTotal * 100).toFixed(1)}% of total)</span>
+                    <span className="ml-2 text-ink-faint">({(shareOfTotal * 100).toFixed(1)}% of total)</span>
                   )}
                 </span>
               </div>
-              <div className="mt-1 h-6 rounded bg-slate-100">
-                <div className="h-6 rounded bg-brand-500" style={{ width: `${widthPct}%` }} />
+              <div className="mt-1.5 h-5 bg-canvas">
+                <div className="h-5 bg-accent/85" style={{ width: `${widthPct}%` }} />
               </div>
             </div>
           );
         })}
       </div>
       {sources.length > 0 && (
-        <p className="mt-3 text-[11px] text-slate-400">Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}</p>
+        <p className="mt-4 text-[11px] text-ink-faint">Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}</p>
       )}
     </div>
   );

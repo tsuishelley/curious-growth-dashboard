@@ -49,9 +49,9 @@ export default function CompanyMetricsView({
 
   if (metrics.length === 0) {
     return (
-      <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
-        <h2 className="text-lg font-semibold text-slate-900">No data yet for {company.name}</h2>
-        <p className="mt-2 text-sm text-slate-500">
+      <div className="border border-dashed border-rule bg-paper p-12 text-center">
+        <h2 className="font-display text-xl text-ink">No data yet for {company.name}</h2>
+        <p className="mx-auto mt-3 max-w-md text-[13px] leading-relaxed text-ink-muted">
           Add {company.name}&apos;s GA4 / HubSpot / PostHog credentials to your environment, then the daily
           sync will start populating real metrics here.
         </p>
@@ -60,24 +60,24 @@ export default function CompanyMetricsView({
   }
 
   const rangeSelector = (
-    <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
-        <h2 className="text-xl font-semibold text-slate-900">{company.name}</h2>
-        <p className="text-xs text-slate-500">
+        <h2 className="font-display text-2xl leading-none text-ink">{company.name}</h2>
+        <p className="mt-2 text-[11px] text-ink-faint">
           Last synced {new Date(metrics[metrics.length - 1].syncedAt).toLocaleString()}
           {metrics[metrics.length - 1].sample && (
-            <span className="ml-2 rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">sample data</span>
+            <span className="label-mono ml-2 bg-accent-soft px-1.5 py-0.5 text-accent">sample data</span>
           )}
         </p>
       </div>
-      <div className="flex gap-1 rounded-lg bg-slate-100 p-1">
+      <div className="flex border border-rule bg-paper">
         {RANGE_OPTIONS.map((opt) => (
           <button
             key={opt.key}
             type="button"
             onClick={() => setRange(opt.key)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              range === opt.key ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"
+            className={`label-mono px-4 py-2.5 transition-colors ${
+              range === opt.key ? "bg-canvas font-medium text-ink" : "text-ink-faint hover:text-ink"
             }`}
           >
             {opt.label}
@@ -91,8 +91,8 @@ export default function CompanyMetricsView({
     return (
       <div className="space-y-6">
         {rangeSelector}
-        <div className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
-          <p className="text-sm text-slate-500">No synced data falls within {rangeLabel} yet.</p>
+        <div className="border border-dashed border-rule bg-paper p-10 text-center">
+          <p className="text-[13px] text-ink-muted">No synced data falls within {rangeLabel} yet.</p>
         </div>
       </div>
     );
@@ -155,12 +155,12 @@ export default function CompanyMetricsView({
     <div className="space-y-6">
       {rangeSelector}
 
-      <p className="text-[11px] text-slate-400">
+      <p className="text-[11px] leading-relaxed text-ink-faint">
         Totals reflect real synced data only, never fabricated — a source with less history than{" "}
         {rangeLabel} shows a partial total for that period rather than an inflated or zeroed-out one.
       </p>
       {dataStartsLate && (
-        <p className="text-[11px] text-amber-600">
+        <p className="border-l-2 border-accent pl-3 text-[11px] leading-relaxed text-accent">
           Note: the earliest real synced data for {company.name} is {earliestRealDate} — {rangeLabel} totals only
           cover that shorter window, not the full {rangeLabel} period.
         </p>
@@ -356,13 +356,13 @@ export default function CompanyMetricsView({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {current.traffic && <TrendChart title={`Sessions (${rangeLabel})`} data={sessionsTrend} source="ga4" />}
         {current.signups && (
-          <TrendChart title={`Signups (${rangeLabel})`} data={signupsTrend} color="#0ea5e9" source="posthog" />
+          <TrendChart title={`Signups (${rangeLabel})`} data={signupsTrend} color="#2f6f8f" source="posthog" />
         )}
         {current.posthogRevenue && (
           <TrendChart
             title={`New revenue (${rangeLabel})`}
             data={revenueTrend}
-            color="#8b5cf6"
+            color="#7a6a9b"
             source="posthog"
           />
         )}
@@ -370,7 +370,7 @@ export default function CompanyMetricsView({
           <TrendChart
             title={`New pipeline value (${rangeLabel})`}
             data={pipelineTrend}
-            color="#f59e0b"
+            color="#a8813a"
             source="hubspot"
           />
         )}
@@ -378,7 +378,7 @@ export default function CompanyMetricsView({
           <TrendChart
             title={`Search clicks (${rangeLabel})`}
             data={searchClicksTrend}
-            color="#10b981"
+            color="#2f7a55"
             source="searchconsole"
           />
         )}
@@ -386,7 +386,7 @@ export default function CompanyMetricsView({
           <TrendChart
             title={`Ad spend (${rangeLabel})`}
             data={adSpendTrend}
-            color="#ef4444"
+            color="#c0442f"
             source="googleads"
           />
         )}
