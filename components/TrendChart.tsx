@@ -8,17 +8,17 @@ import { SOURCE_LABELS } from "@/lib/sourceLabels";
 interface TrendChartProps {
   title: string;
   data: { date: string; value: number }[];
-  color?: string;
   source?: SourceType;
 }
 
 // Recharts renders SVG, so it can't inherit Tailwind classes -- these mirror
-// the `ink`/`rule`/`accent` tokens in tailwind.config.ts and must be kept in sync.
+// the `ink`/`rule` tokens in tailwind.config.ts and must be kept in sync.
+const LINE_COLOR = "#1a1a1a";
 const AXIS_COLOR = "#9c9890";
 const RULE_COLOR = "#e5e2db";
 const MONO_STACK = '"Atlas Typewriter", ui-monospace, Menlo, monospace';
 
-export default function TrendChart({ title, data, color = "#d9503f", source }: TrendChartProps) {
+export default function TrendChart({ title, data, source }: TrendChartProps) {
   // ResponsiveContainer measures its parent via ResizeObserver on mount, which
   // can race with hydration in Next.js and render at 0 width — deferring the
   // chart to a post-mount render reliably avoids the blank-on-first-load bug.
@@ -63,7 +63,7 @@ export default function TrendChart({ title, data, color = "#d9503f", source }: T
               <Line
                 type="monotone"
                 dataKey="value"
-                stroke={color}
+                stroke={LINE_COLOR}
                 strokeWidth={1.5}
                 dot={false}
                 isAnimationActive={false}

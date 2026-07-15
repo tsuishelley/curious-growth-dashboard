@@ -22,7 +22,7 @@ export default function TopListCard({ title, items, source }: TopListCardProps) 
             </div>
             <div className="mt-1 h-[3px] bg-canvas">
               <div
-                className="h-[3px] bg-accent"
+                className="h-[3px] bg-ink"
                 style={{ width: `${item.value === 0 ? 0 : Math.max((item.value / maxValue) * 100, 4)}%` }}
               />
             </div>

@@ -356,13 +356,12 @@ export default function CompanyMetricsView({
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {current.traffic && <TrendChart title={`Sessions (${rangeLabel})`} data={sessionsTrend} source="ga4" />}
         {current.signups && (
-          <TrendChart title={`Signups (${rangeLabel})`} data={signupsTrend} color="#2f6f8f" source="posthog" />
+          <TrendChart title={`Signups (${rangeLabel})`} data={signupsTrend} source="posthog" />
         )}
         {current.posthogRevenue && (
           <TrendChart
             title={`New revenue (${rangeLabel})`}
             data={revenueTrend}
-            color="#7a6a9b"
             source="posthog"
           />
         )}
@@ -370,7 +369,6 @@ export default function CompanyMetricsView({
           <TrendChart
             title={`New pipeline value (${rangeLabel})`}
             data={pipelineTrend}
-            color="#a8813a"
             source="hubspot"
           />
         )}
@@ -378,7 +376,6 @@ export default function CompanyMetricsView({
           <TrendChart
             title={`Search clicks (${rangeLabel})`}
             data={searchClicksTrend}
-            color="#2f7a55"
             source="searchconsole"
           />
         )}
@@ -386,7 +383,6 @@ export default function CompanyMetricsView({
           <TrendChart
             title={`Ad spend (${rangeLabel})`}
             data={adSpendTrend}
-            color="#c0442f"
             source="googleads"
           />
         )}

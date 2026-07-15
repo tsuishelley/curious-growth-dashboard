@@ -48,7 +48,7 @@ export default function FunnelChart({ title = "Funnel", stages, source, mode = "
                 </span>
               </div>
               <div className="mt-1.5 h-5 bg-canvas">
-                <div className="h-5 bg-accent/85" style={{ width: `${widthPct}%` }} />
+                <div className="h-5 bg-ink" style={{ width: `${widthPct}%` }} />
               </div>
             </div>
           );
