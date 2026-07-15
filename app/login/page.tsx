@@ -57,7 +57,7 @@ function LoginForm() {
         {loading ? "Signing in..." : "Sign in with Google"}
       </button>
 
-      {error && <p className="mt-4 text-[11px] leading-relaxed text-accent">{error}</p>}
+      {error && <p className="mt-4 text-[12px] leading-relaxed text-accent">{error}</p>}
     </div>
   );
 }

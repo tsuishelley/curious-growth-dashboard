@@ -63,7 +63,7 @@ export default function CompanyMetricsView({
     <div className="flex flex-wrap items-end justify-between gap-4">
       <div>
         <h2 className="font-display text-2xl leading-none text-ink">{company.name}</h2>
-        <p className="mt-2 text-[11px] text-ink-faint">
+        <p className="mt-2 text-[12px] text-ink-faint">
           Last synced {new Date(metrics[metrics.length - 1].syncedAt).toLocaleString()}
           {metrics[metrics.length - 1].sample && (
             <span className="label-mono ml-2 bg-accent-soft px-1.5 py-0.5 text-accent">sample data</span>
@@ -155,12 +155,12 @@ export default function CompanyMetricsView({
     <div className="space-y-6">
       {rangeSelector}
 
-      <p className="text-[11px] leading-relaxed text-ink-faint">
+      <p className="text-[12px] leading-relaxed text-ink-faint">
         Totals reflect real synced data only, never fabricated — a source with less history than{" "}
         {rangeLabel} shows a partial total for that period rather than an inflated or zeroed-out one.
       </p>
       {dataStartsLate && (
-        <p className="border-l-2 border-accent pl-3 text-[11px] leading-relaxed text-accent">
+        <p className="border-l-2 border-accent pl-3 text-[12px] leading-relaxed text-accent">
           Note: the earliest real synced data for {company.name} is {earliestRealDate} — {rangeLabel} totals only
           cover that shorter window, not the full {rangeLabel} period.
         </p>
@@ -169,7 +169,7 @@ export default function CompanyMetricsView({
       <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         {current.traffic && (
           <KpiCard
-            label="Sessions"
+            label={`Total Sessions (${rangeLabel})`}
             value={current.traffic.sessions.toLocaleString()}
             changeFraction={
               trafficComparable && previous.traffic
@@ -183,7 +183,7 @@ export default function CompanyMetricsView({
         {current.signups && (
           <>
             <KpiCard
-              label="Signups"
+              label={`Total Signups (${rangeLabel})`}
               value={current.signups.signups.toLocaleString()}
               changeFraction={
                 signupsComparable && previous.signups
@@ -194,7 +194,7 @@ export default function CompanyMetricsView({
               source="posthog"
             />
             <KpiCard
-              label="Activation Rate"
+              label={`Activation Rate (${rangeLabel})`}
               value={`${(current.signups.activationRate * 100).toFixed(1)}%`}
               changeFraction={
                 signupsComparable && previous.signups
@@ -208,7 +208,7 @@ export default function CompanyMetricsView({
         )}
         {current.posthogRevenue && (
           <KpiCard
-            label="New Revenue"
+            label={`Total New Revenue (${rangeLabel})`}
             value={`$${current.posthogRevenue.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
             changeFraction={
               revenueComparable && previous.posthogRevenue
@@ -222,7 +222,7 @@ export default function CompanyMetricsView({
         {current.pipeline && (
           <>
             <KpiCard
-              label="New Pipeline"
+              label={`Total New Pipeline (${rangeLabel})`}
               value={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
               changeFraction={
                 pipelineComparable && previous.pipeline
@@ -233,7 +233,7 @@ export default function CompanyMetricsView({
               source="hubspot"
             />
             <KpiCard
-              label="New MQLs"
+              label={`Total New MQLs (${rangeLabel})`}
               value={current.pipeline.newMqls.toLocaleString()}
               changeFraction={
                 pipelineComparable && previous.pipeline
@@ -245,7 +245,7 @@ export default function CompanyMetricsView({
             />
             {latestDay.pipeline?.winRate != null && (
               <KpiCard
-                label="Win Rate"
+                label="Win Rate (current)"
                 value={`${(latestDay.pipeline.winRate * 100).toFixed(0)}%`}
                 changeFraction={
                   pipelineComparable && previousLatestDay?.pipeline?.winRate != null
@@ -258,7 +258,7 @@ export default function CompanyMetricsView({
             )}
             {latestDay.pipeline?.avgDaysToCloseDays != null && (
               <KpiCard
-                label="Avg Days to Close"
+                label="Avg Days to Close (current)"
                 value={`${latestDay.pipeline.avgDaysToCloseDays.toFixed(0)}d`}
                 source="hubspot"
               />
@@ -268,7 +268,7 @@ export default function CompanyMetricsView({
         {current.searchConsole && (
           <>
             <KpiCard
-              label="Search Clicks"
+              label={`Total Search Clicks (${rangeLabel})`}
               value={current.searchConsole.clicks.toLocaleString()}
               changeFraction={
                 searchComparable && previous.searchConsole
@@ -279,7 +279,7 @@ export default function CompanyMetricsView({
               source="searchconsole"
             />
             <KpiCard
-              label="Search Impressions"
+              label={`Total Search Impressions (${rangeLabel})`}
               value={current.searchConsole.impressions.toLocaleString()}
               changeFraction={
                 searchComparable && previous.searchConsole
@@ -290,7 +290,7 @@ export default function CompanyMetricsView({
               source="searchconsole"
             />
             <KpiCard
-              label="Avg Search Position"
+              label={`Avg Search Position (${rangeLabel})`}
               value={current.searchConsole.position.toFixed(1)}
               changeFraction={(() => {
                 // Lower position is better, so invert the raw change to keep the ▲/▼ color meaningful.
@@ -306,7 +306,7 @@ export default function CompanyMetricsView({
         {current.googleAds && (
           <>
             <KpiCard
-              label="Ad Spend"
+              label={`Total Ad Spend (${rangeLabel})`}
               value={`$${current.googleAds.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
               changeFraction={
                 googleAdsComparable && previous.googleAds
@@ -317,7 +317,7 @@ export default function CompanyMetricsView({
               source="googleads"
             />
             <KpiCard
-              label="Ad Clicks"
+              label={`Total Ad Clicks (${rangeLabel})`}
               value={current.googleAds.clicks.toLocaleString()}
               changeFraction={
                 googleAdsComparable && previous.googleAds
@@ -328,7 +328,7 @@ export default function CompanyMetricsView({
               source="googleads"
             />
             <KpiCard
-              label="Ad Conversions"
+              label={`Total Ad Conversions (${rangeLabel})`}
               value={current.googleAds.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 })}
               changeFraction={
                 googleAdsComparable && previous.googleAds
@@ -339,7 +339,7 @@ export default function CompanyMetricsView({
               source="googleads"
             />
             <KpiCard
-              label="Avg CPC"
+              label={`Avg CPC (${rangeLabel})`}
               value={`$${current.googleAds.cpc.toFixed(2)}`}
               changeFraction={
                 googleAdsComparable && previous.googleAds

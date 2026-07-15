@@ -16,7 +16,7 @@ export default function TopListCard({ title, items, source }: TopListCardProps) 
       <div className="mt-4 space-y-2.5">
         {items.map((item) => (
           <div key={item.label}>
-            <div className="flex items-center justify-between text-[11px] text-ink-muted">
+            <div className="flex items-center justify-between text-[12px] text-ink-muted">
               <span className="truncate pr-3">{item.label}</span>
               <span className="shrink-0 font-mono text-ink">{item.value.toLocaleString()}</span>
             </div>
@@ -29,7 +29,7 @@ export default function TopListCard({ title, items, source }: TopListCardProps) 
           </div>
         ))}
       </div>
-      {source && <p className="mt-4 text-[11px] text-ink-faint">Source: {SOURCE_LABELS[source]}</p>}
+      {source && <p className="mt-4 text-[12px] text-ink-faint">Source: {SOURCE_LABELS[source]}</p>}
     </div>
   );
 }

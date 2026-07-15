@@ -74,7 +74,7 @@ export default function AttributionFunnel({ title, steps, byChannel, caveat }: A
 
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5">
         {channels.map((c) => (
-          <span key={c.channel} className="flex items-center gap-1.5 text-[11px] text-ink-muted">
+          <span key={c.channel} className="flex items-center gap-1.5 text-[12px] text-ink-muted">
             <span className="h-2 w-2 shrink-0" style={{ backgroundColor: c.color }} />
             {c.channel}
           </span>
@@ -153,18 +153,18 @@ export default function AttributionFunnel({ title, steps, byChannel, caveat }: A
             <span className="h-2 w-2 shrink-0" style={{ backgroundColor: hover.color }} />
             <span className="label-mono text-ink">{hover.channel}</span>
           </div>
-          <p className="mt-1.5 whitespace-nowrap text-[11px] text-ink-muted">
+          <p className="mt-1.5 whitespace-nowrap text-[12px] text-ink-muted">
             <span className="font-mono text-ink">{hover.count.toLocaleString()}</span> at{" "}
             {steps[hover.stepIndex]?.label}
           </p>
-          <p className="mt-0.5 whitespace-nowrap text-[11px] text-ink-faint">
+          <p className="mt-0.5 whitespace-nowrap text-[12px] text-ink-faint">
             {hover.shareOfStep.toFixed(1)}% of this step · {hover.shareOfEntry.toFixed(2)}% of its own entries
           </p>
         </div>
       )}
 
       {caveat && (
-        <p className="mt-5 border-l-2 border-accent pl-3 text-[11px] leading-relaxed text-ink-muted">{caveat}</p>
+        <p className="mt-5 border-l-2 border-accent pl-3 text-[12px] leading-relaxed text-ink-muted">{caveat}</p>
       )}
     </div>
   );

@@ -33,7 +33,7 @@ export default function FunnelChart({ title = "Funnel", stages, source, mode = "
 
           return (
             <div key={stage.key}>
-              <div className="flex items-baseline justify-between text-[11px]">
+              <div className="flex items-baseline justify-between text-[12px]">
                 <span className="truncate pr-3 text-ink-muted">{stage.label}</span>
                 <span className="shrink-0">
                   <span className="font-mono text-ink">{stage.count.toLocaleString()}</span>
@@ -55,7 +55,7 @@ export default function FunnelChart({ title = "Funnel", stages, source, mode = "
         })}
       </div>
       {sources.length > 0 && (
-        <p className="mt-4 text-[11px] text-ink-faint">Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}</p>
+        <p className="mt-4 text-[12px] text-ink-faint">Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}</p>
       )}
     </div>
   );

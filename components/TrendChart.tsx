@@ -49,7 +49,7 @@ export default function TrendChart({ title, data, source }: TrendChartProps) {
               />
               <Tooltip
                 contentStyle={{
-                  fontSize: 11,
+                  fontSize: 12,
                   borderRadius: 0,
                   border: `1px solid ${RULE_COLOR}`,
                   fontFamily: MONO_STACK,
@@ -72,7 +72,7 @@ export default function TrendChart({ title, data, source }: TrendChartProps) {
           </ResponsiveContainer>
         )}
       </div>
-      {source && <p className="mt-3 text-[11px] text-ink-faint">Source: {SOURCE_LABELS[source]}</p>}
+      {source && <p className="mt-3 text-[12px] text-ink-faint">Source: {SOURCE_LABELS[source]}</p>}
     </div>
   );
 }

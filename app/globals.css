@@ -43,6 +43,6 @@ body {
   /* Small uppercase monospace label -- the recurring motif for metric names,
      section headers, and toggles. */
   .label-mono {
-    @apply font-mono text-[11px] uppercase tracking-[0.12em];
+    @apply font-mono text-[12px] uppercase tracking-[0.12em];
   }
 }

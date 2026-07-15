@@ -16,16 +16,19 @@ export default function KpiCard({ label, value, changeFraction, changeLabel = "v
 
   return (
     <div className="border border-rule bg-paper p-5">
-      <p className="label-mono text-ink-faint">{label}</p>
+      {/* Two lines reserved: labels like "Total Search Impressions (30D)" wrap
+          while shorter ones don't, and without a floor the big value below
+          would sit at a different height on each card in a row. */}
+      <p className="label-mono min-h-[36px] text-ink-faint">{label}</p>
       <p className="mt-3 text-[32px] font-bold leading-none tracking-tight text-ink">{value}</p>
       {hasChange && (
-        <p className={`mt-2.5 text-[11px] ${isPositive ? "text-positive" : "text-negative"}`}>
+        <p className={`mt-2.5 text-[12px] ${isPositive ? "text-positive" : "text-negative"}`}>
           {isPositive ? "▲" : "▼"} {Math.abs(changeFraction! * 100).toFixed(1)}%{" "}
           <span className="text-ink-faint">{changeLabel}</span>
         </p>
       )}
       {sources.length > 0 && (
-        <p className="mt-3 text-[11px] text-ink-faint">
+        <p className="mt-3 text-[12px] text-ink-faint">
           Source: {sources.map((s) => SOURCE_LABELS[s]).join(", ")}
         </p>
       )}
