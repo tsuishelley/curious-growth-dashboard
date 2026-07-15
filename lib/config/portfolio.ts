@@ -174,6 +174,31 @@ export const portfolioCompanies: PortfolioCompany[] = [
     ],
   },
   {
+    id: "avenue",
+    name: "Avenue",
+    slug: "avenue",
+    // Nothing connected yet -- every source module returns "not connected" when
+    // its env vars are absent, so this tab renders the empty state until real
+    // credentials land. The self-serve funnel below is a placeholder assumption
+    // (mirroring Convox/Polymer); if Avenue turns out to be sales-led, swap in
+    // the HubSpot stages and the hubspot token env, as in Buildfire/Uservoice.
+    sources: {
+      ga4: { propertyIdEnv: "AVENUE_GA4_PROPERTY_ID" },
+      posthog: {
+        apiKeyEnv: "AVENUE_POSTHOG_API_KEY",
+        projectIdEnv: "AVENUE_POSTHOG_PROJECT_ID",
+        hostEnv: "AVENUE_POSTHOG_HOST",
+      },
+      searchconsole: { siteUrlEnv: "AVENUE_SEARCH_CONSOLE_SITE_URL" },
+      googleads: { customerIdEnv: "AVENUE_GOOGLE_ADS_CUSTOMER_ID" },
+    },
+    funnel: [
+      { key: "visitor", label: "Visitor", source: "ga4" },
+      { key: "signup", label: "Signup", source: "posthog" },
+      { key: "activated", label: "Activated", source: "posthog" },
+    ],
+  },
+  {
     id: "uservoice",
     name: "Uservoice",
     slug: "uservoice",
