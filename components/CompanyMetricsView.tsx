@@ -8,7 +8,7 @@ import KpiCard from "@/components/KpiCard";
 import TrendChart from "@/components/TrendChart";
 import FunnelChart from "@/components/FunnelChart";
 import TopListCard from "@/components/TopListCard";
-import ChannelAttributionTable from "@/components/ChannelAttributionTable";
+import AttributionFunnel from "@/components/AttributionFunnel";
 
 type RangeKey = "30d" | "90d" | "ytd";
 
@@ -395,18 +395,12 @@ export default function CompanyMetricsView({
             mode="snapshot"
           />
         )}
-        {latestDay.attributionFunnel && latestDay.attributionFunnel.steps.length > 0 && (
-          <FunnelChart
-            title={`${latestDay.attributionFunnel.insightName} (30d)`}
-            stages={latestDay.attributionFunnel.steps}
-            source="posthog"
-          />
-        )}
         {latestDay.attributionFunnel && latestDay.attributionFunnel.byChannel.length > 0 && (
           <div className="lg:col-span-2">
-            <ChannelAttributionTable
-              title="Attribution Funnel by Acquisition Channel (30d)"
-              channels={latestDay.attributionFunnel.byChannel}
+            <AttributionFunnel
+              title={`${latestDay.attributionFunnel.insightName} (30d)`}
+              steps={latestDay.attributionFunnel.steps}
+              byChannel={latestDay.attributionFunnel.byChannel}
               caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate."
             />
           </div>
