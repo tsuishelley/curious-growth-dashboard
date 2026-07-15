@@ -94,7 +94,7 @@ export default function AttributionFunnel({ title, steps, byChannel, caveat }: A
 
           return (
             <div key={step.key}>
-              <div className="flex items-baseline justify-between gap-3 text-[11px]">
+              <div className="flex items-baseline justify-between gap-3 text-[12px]">
                 <span className="truncate text-ink-muted" title={step.label}>
                   {step.label}
                 </span>

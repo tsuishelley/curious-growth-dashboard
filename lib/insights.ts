@@ -5,7 +5,7 @@ import { aggregatePeriod } from "@/lib/aggregate";
 import type { DailyMetrics, WeeklyInsight } from "@/lib/types";
 import type { PortfolioCompany } from "@/lib/config/portfolio";
 
-const INSIGHTS_MODEL = "claude-opus-4-8";
+const INSIGHTS_MODEL = "claude-sonnet-5";
 
 /** ISO week identifier, e.g. "2026-W27". */
 export function currentWeekId(date = new Date()): string {
