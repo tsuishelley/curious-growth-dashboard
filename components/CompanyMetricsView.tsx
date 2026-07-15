@@ -403,11 +403,13 @@ export default function CompanyMetricsView({
           />
         )}
         {latestDay.attributionFunnel && latestDay.attributionFunnel.byChannel.length > 0 && (
-          <ChannelAttributionTable
-            title="Conversion by Acquisition Channel (30d)"
-            rows={latestDay.attributionFunnel.byChannel}
-            caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate."
-          />
+          <div className="lg:col-span-2">
+            <ChannelAttributionTable
+              title="Attribution Funnel by Acquisition Channel (30d)"
+              channels={latestDay.attributionFunnel.byChannel}
+              caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate."
+            />
+          </div>
         )}
         {current.traffic?.topChannels && current.traffic.topChannels.length > 0 && (
           <TopListCard

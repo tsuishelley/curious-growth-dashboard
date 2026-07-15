@@ -74,7 +74,7 @@ export async function fetchAttributionFunnel(
       return { key: `step-${i}`, label, count };
     });
 
-    // Only a breakdown-configured Insight has a meaningful per-channel table;
+    // Only a breakdown-configured Insight has a meaningful per-channel segmentation;
     // a single plain funnel has nothing to break down.
     const hasBreakdown = series.length > 1 || series[0][0]?.breakdown_value !== undefined;
     const byChannel = hasBreakdown
@@ -82,11 +82,14 @@ export async function fetchAttributionFunnel(
           .map((s) => {
             const rawChannel = s[0]?.breakdown_value;
             const channel = Array.isArray(rawChannel) ? rawChannel[0] ?? "Unknown" : rawChannel ?? "Unknown";
-            const visited = s[0]?.count ?? 0;
-            const converted = s[s.length - 1]?.count ?? 0;
-            return { channel, visited, converted, conversionRate: visited > 0 ? converted / visited : 0 };
+            return {
+              channel,
+              // Reuse the aggregate labels so step i means the same thing in both.
+              steps: steps.map((step, i) => ({ ...step, count: s[i]?.count ?? 0 })),
+            };
           })
-          .sort((a, b) => b.visited - a.visited)
+          // Busiest channel first, by entries into the funnel's first step.
+          .sort((a, b) => (b.steps[0]?.count ?? 0) - (a.steps[0]?.count ?? 0))
       : [];
 
     return { attributionFunnel: { insightName, steps, byChannel } };

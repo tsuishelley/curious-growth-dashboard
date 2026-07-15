@@ -47,8 +47,13 @@ export interface AttributionFunnelMetrics {
   insightName: string;
   /** Ordered funnel steps (e.g. marketing visit -> signup -> ... -> paid), aggregated across all channel breakdowns. */
   steps: FunnelStageValue[];
-  /** Per-channel first-step vs. last-step counts, from a PostHog funnel Insight's own channel breakdown (empty if the Insight has no breakdown configured). */
-  byChannel: { channel: string; visited: number; converted: number; conversionRate: number }[];
+  /**
+   * The same funnel segmented by acquisition channel (Direct, Organic Search, ...),
+   * from the PostHog Insight's own breakdown. `steps` here is the full per-channel
+   * progression in the same order as the top-level `steps`, so step i lines up across
+   * both. Empty if the Insight has no breakdown configured.
+   */
+  byChannel: { channel: string; steps: FunnelStageValue[] }[];
 }
 
 export interface GoogleAdsMetrics {
