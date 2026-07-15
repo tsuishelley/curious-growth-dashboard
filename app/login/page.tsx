@@ -45,7 +45,7 @@ function LoginForm() {
   return (
     <div className="w-full max-w-sm border border-rule bg-paper p-10">
       <h1 className="font-display text-3xl leading-tight text-ink">Growth at Curious</h1>
-      <p className="mt-3 text-[13px] leading-relaxed text-ink-muted">
+      <p className="mt-3 text-[14px] leading-relaxed text-ink-muted">
         Sign in with your @{ALLOWED_EMAIL_DOMAIN} account to view portfolio company metrics.
       </p>
 

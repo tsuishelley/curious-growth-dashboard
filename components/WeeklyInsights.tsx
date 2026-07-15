@@ -31,7 +31,7 @@ export default function WeeklyInsights({ insight }: { insight: WeeklyInsight }) 
       </div>
       <ul className="mt-5 space-y-2.5">
         {bullets.map((b, i) => (
-          <li key={i} className="flex gap-3 text-[13px] leading-relaxed text-ink-muted">
+          <li key={i} className="flex gap-3 text-[14px] leading-relaxed text-ink-muted">
             <span className="mt-[7px] h-[3px] w-[3px] shrink-0 rounded-full bg-ink-faint" />
             <span>{renderInline(b, `b${i}`)}</span>
           </li>

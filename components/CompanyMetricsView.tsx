@@ -51,7 +51,7 @@ export default function CompanyMetricsView({
     return (
       <div className="border border-dashed border-rule bg-paper p-12 text-center">
         <h2 className="font-display text-xl text-ink">No data yet for {company.name}</h2>
-        <p className="mx-auto mt-3 max-w-md text-[13px] leading-relaxed text-ink-muted">
+        <p className="mx-auto mt-3 max-w-md text-[14px] leading-relaxed text-ink-muted">
           Add {company.name}&apos;s GA4 / HubSpot / PostHog credentials to your environment, then the daily
           sync will start populating real metrics here.
         </p>
@@ -92,7 +92,7 @@ export default function CompanyMetricsView({
       <div className="space-y-6">
         {rangeSelector}
         <div className="border border-dashed border-rule bg-paper p-10 text-center">
-          <p className="text-[13px] text-ink-muted">No synced data falls within {rangeLabel} yet.</p>
+          <p className="text-[14px] text-ink-muted">No synced data falls within {rangeLabel} yet.</p>
         </div>
       </div>
     );
