@@ -177,17 +177,33 @@ export const portfolioCompanies: PortfolioCompany[] = [
     id: "avenue",
     name: "Avenue",
     slug: "avenue",
-    // Nothing connected yet -- every source module returns "not connected" when
-    // its env vars are absent, so this tab renders the empty state until real
-    // credentials land. The self-serve funnel below is a placeholder assumption
-    // (mirroring Convox/Polymer); if Avenue turns out to be sales-led, swap in
-    // the HubSpot stages and the hubspot token env, as in Buildfire/Uservoice.
+    // Self-serve for now: signups/activation tracked in PostHog (project 198634,
+    // org "AvenueHQ", US cloud). Avenue is nominally hybrid, but there's no
+    // HubSpot access yet -- add `hubspot: { tokenEnv: "AVENUE_HUBSPOT_TOKEN" }`
+    // and its pipeline KPIs + deal-stage funnel light up automatically once a
+    // token exists. Every source returns "not connected" until its env var is
+    // set, so this tab fills in partial data as credentials land.
     sources: {
       ga4: { propertyIdEnv: "AVENUE_GA4_PROPERTY_ID" },
       posthog: {
         apiKeyEnv: "AVENUE_POSTHOG_API_KEY",
         projectIdEnv: "AVENUE_POSTHOG_PROJECT_ID",
         hostEnv: "AVENUE_POSTHOG_HOST",
+        // Confirmed against Avenue's tracking plan (project 198634, US cloud):
+        // "sign_up" is the real signup event (~36/30d). "onboarding_completed" is
+        // the activation milestone -- but heads up, it has fired only once
+        // (2025-11-24) and not since, so activation rate reads 0 until that
+        // instrumentation is fixed on Avenue's side. No PostHog revenue/payment
+        // event exists yet, so `revenueEvent` is intentionally unset (New Revenue
+        // stays off for Avenue).
+        signupEvent: "sign_up",
+        activationEvent: "onboarding_completed",
+        // Avenue has no GA4 connected yet but plenty of PostHog $pageview data,
+        // so derive website traffic (sessions, users, channel mix) and the
+        // funnel's "Visitor" stage from PostHog as a fallback -- otherwise those
+        // would all read 0. Swap back to GA4 automatically if a GA4 property is
+        // later added (GA4 wins when both are present).
+        trackWebsiteTraffic: true,
       },
       searchconsole: { siteUrlEnv: "AVENUE_SEARCH_CONSOLE_SITE_URL" },
       googleads: { customerIdEnv: "AVENUE_GOOGLE_ADS_CUSTOMER_ID" },
