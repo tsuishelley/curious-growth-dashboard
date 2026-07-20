@@ -10,6 +10,10 @@ import MonthlyBarChart from "@/components/MonthlyBarChart";
 import FunnelChart from "@/components/FunnelChart";
 import TopListCard from "@/components/TopListCard";
 import AttributionFunnel from "@/components/AttributionFunnel";
+import UnitEconomics from "@/components/UnitEconomics";
+import GoalsCard from "@/components/GoalsCard";
+import { getCompanyEconomics } from "@/lib/config/economics";
+import { computeUnitEconomics, computeGoals } from "@/lib/economics";
 
 type RangeKey = "30d" | "90d" | "ytd";
 
@@ -130,6 +134,19 @@ export default function CompanyMetricsView({
   const current = aggregatePeriod(currentPeriod);
   const previous = aggregatePeriod(previousPeriod);
   const changeLabel = `vs prior ${rangeLabel}`;
+
+  // Nominal calendar length of the selected range, used to scale monthly spend
+  // and goals (which accrue over calendar time, independent of how many days
+  // actually have synced data). 30d/90d are fixed; YTD is days elapsed this year.
+  const rangeDays =
+    range === "30d"
+      ? 30
+      : range === "90d"
+        ? 90
+        : Math.max(1, Math.ceil((Date.now() - new Date(new Date().getFullYear(), 0, 1).getTime()) / 86_400_000));
+  const economics = getCompanyEconomics(company.id);
+  const unitEconomics = computeUnitEconomics(economics, current, rangeDays);
+  const goals = computeGoals(economics, current, rangeDays);
   // GA4 if connected, else PostHog's own pageview/session data as a fallback
   // (see trackWebsiteTraffic) -- reflects whichever source actually supplied
   // `current.traffic`, so the "Source: X" label is never wrong.
@@ -395,6 +412,12 @@ export default function CompanyMetricsView({
           </>
         )}
       </div>
+
+      {/* Both render null until a company's economics/goals are filled in
+          (lib/config/economics.ts), so they stay hidden rather than showing
+          fabricated numbers. */}
+      <GoalsCard goals={goals} rangeLabel={rangeLabel} />
+      <UnitEconomics data={unitEconomics} rangeLabel={rangeLabel} />
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
         {current.traffic && (
