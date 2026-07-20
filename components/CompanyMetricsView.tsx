@@ -6,6 +6,7 @@ import type { DailyMetrics } from "@/lib/types";
 import { aggregatePeriod, comparableCoverage, weekOverWeekChange } from "@/lib/aggregate";
 import KpiCard from "@/components/KpiCard";
 import TrendChart from "@/components/TrendChart";
+import MonthlyBarChart from "@/components/MonthlyBarChart";
 import FunnelChart from "@/components/FunnelChart";
 import TopListCard from "@/components/TopListCard";
 import AttributionFunnel from "@/components/AttributionFunnel";
@@ -101,6 +102,31 @@ export default function CompanyMetricsView({
   const latestDay = currentPeriod[currentPeriod.length - 1];
   const previousLatestDay = previousPeriod[previousPeriod.length - 1] as DailyMetrics | undefined;
 
+  // Activation rate is a real cohort conversion computed over a rolling 30-day
+  // window (see SignupMetrics.cohortActivationRate), so — like win rate — it's
+  // read from the latest snapshot rather than summed across the selected range.
+  // Falls back to the legacy same-window ratio only for snapshots synced before
+  // the cohort field existed, so the card always renders something.
+  const cohortActivationRate = latestDay.signups?.cohortActivationRate;
+  const prevCohortActivationRate = previousLatestDay?.signups?.cohortActivationRate;
+
+  // Each day's attribution funnel already covers a trailing 30-day window, so the
+  // snapshot from ~30 days before the latest one is the directly-prior,
+  // non-overlapping period to compare against. Look back through the full fetched
+  // history (not just the selected range) for the newest snapshot on/before that
+  // cutoff that actually carries an attribution funnel.
+  const priorAttributionSteps = (() => {
+    if (!latestDay.attributionFunnel) return undefined;
+    const cutoff = new Date(latestDay.date);
+    cutoff.setDate(cutoff.getDate() - 30);
+    const cutoffStr = cutoff.toISOString().slice(0, 10);
+    for (let i = metrics.length - 1; i >= 0; i--) {
+      const af = metrics[i].attributionFunnel;
+      if (metrics[i].date <= cutoffStr && af && af.steps.length > 0) return af.steps;
+    }
+    return undefined;
+  })();
+
   const current = aggregatePeriod(currentPeriod);
   const previous = aggregatePeriod(previousPeriod);
   const changeLabel = `vs prior ${rangeLabel}`;
@@ -194,15 +220,16 @@ export default function CompanyMetricsView({
               source="posthog"
             />
             <KpiCard
-              label={`Activation Rate (${rangeLabel})`}
-              value={`${(current.signups.activationRate * 100).toFixed(1)}%`}
+              label="Activation Rate (30d cohort)"
+              value={`${((cohortActivationRate ?? current.signups.activationRate) * 100).toFixed(1)}%`}
               changeFraction={
-                signupsComparable && previous.signups
-                  ? weekOverWeekChange(current.signups.activationRate, previous.signups.activationRate)
+                cohortActivationRate != null && prevCohortActivationRate != null
+                  ? weekOverWeekChange(cohortActivationRate, prevCohortActivationRate)
                   : null
               }
-              changeLabel={changeLabel}
+              changeLabel={`vs ${rangeLabel} ago`}
               source="posthog"
+              hint="Of the distinct users who signed up in the last 30 days, the share who have since hit the activation milestone. A cohort conversion, so it stays between 0–100% — unlike a raw activations-per-signup ratio."
             />
           </>
         )}
@@ -359,10 +386,13 @@ export default function CompanyMetricsView({
           <TrendChart title={`Signups (${rangeLabel})`} data={signupsTrend} source="posthog" />
         )}
         {current.posthogRevenue && (
-          <TrendChart
-            title={`New revenue (${rangeLabel})`}
+          <MonthlyBarChart
+            title={`New revenue by month (${rangeLabel})`}
             data={revenueTrend}
             source="posthog"
+            valueFormatter={(v) =>
+              v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${v.toLocaleString()}`
+            }
           />
         )}
         {current.pipeline && (
@@ -401,6 +431,7 @@ export default function CompanyMetricsView({
               title={`${latestDay.attributionFunnel.insightName} (30d)`}
               steps={latestDay.attributionFunnel.steps}
               byChannel={latestDay.attributionFunnel.byChannel}
+              previousSteps={priorAttributionSteps}
               caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate."
             />
           </div>

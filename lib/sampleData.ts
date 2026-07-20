@@ -56,6 +56,14 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
   const signups = hasPosthog ? Math.round((sessions * randomBetween(4, 9)) / 100) : 0;
   const activatedUsers = hasPosthog ? Math.round((signups * randomBetween(35, 65)) / 100) : 0;
 
+  // Cohort activation reflects a trailing 30-day signup cohort (not this single
+  // day), so it's a much larger denominator than the daily `signups` above and,
+  // being a real conversion, always resolves to 0–1 — mirrors the live PostHog
+  // integration's rolling cohort window.
+  const cohortSignups = hasPosthog ? Math.round(signups * randomBetween(20, 30)) : 0;
+  const cohortActivationRate = hasPosthog && cohortSignups > 0 ? randomBetween(30, 60) / 100 : null;
+  const cohortActivated = cohortActivationRate !== null ? Math.round(cohortSignups * cohortActivationRate) : 0;
+
   const newContacts = hasHubspot ? seededDay(dayIndex, 12, 0.15, 0.4) : 0;
   const newMqls = hasHubspot ? Math.round((newContacts * randomBetween(20, 35)) / 100) : 0;
   const newDeals = hasHubspot ? Math.round((newMqls * randomBetween(30, 50)) / 100) : 0;
@@ -116,7 +124,14 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
       : null,
     trafficSource: hasGa4 ? "ga4" : null,
     signups: hasPosthog
-      ? { signups, activatedUsers, activationRate: signups > 0 ? activatedUsers / signups : 0 }
+      ? {
+          signups,
+          activatedUsers,
+          activationRate: signups > 0 ? activatedUsers / signups : 0,
+          cohortSignups,
+          cohortActivated,
+          cohortActivationRate,
+        }
       : null,
     pipeline: hasHubspot
       ? { newContacts, newMqls, newDeals, newPipelineValue, wonDeals, wonValue, lostDeals, winRate, avgDaysToCloseDays }

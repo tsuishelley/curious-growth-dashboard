@@ -7,6 +7,12 @@ interface AttributionFunnelProps {
   title: string;
   steps: FunnelStageValue[];
   byChannel: { channel: string; steps: FunnelStageValue[] }[];
+  /**
+   * The same funnel's aggregate steps from the directly-prior 30-day period, used
+   * to show whether each step's conversion is improving or slipping. Omitted when
+   * there isn't yet a full prior period of history to compare against.
+   */
+  previousSteps?: FunnelStageValue[];
   caveat?: string;
 }
 
@@ -46,7 +52,7 @@ interface HoverState {
   y: number;
 }
 
-export default function AttributionFunnel({ title, steps, byChannel, caveat }: AttributionFunnelProps) {
+export default function AttributionFunnel({ title, steps, byChannel, previousSteps, caveat }: AttributionFunnelProps) {
   const [hover, setHover] = useState<HoverState | null>(null);
 
   // Collapse the long tail into "Other" so the colour scale stays readable.
@@ -71,6 +77,12 @@ export default function AttributionFunnel({ title, steps, byChannel, caveat }: A
   return (
     <div className="border border-rule bg-paper p-5">
       <p className="label-mono text-ink-faint">{title}</p>
+      {previousSteps && previousSteps.length > 0 && (
+        <p className="mt-1 text-[12px] text-ink-faint">
+          ▲/▼ shows the change vs the prior 30-day period — entry volume on the first step, step-to-step
+          conversion (in percentage points) on the rest.
+        </p>
+      )}
 
       <div className="mt-4 flex flex-wrap gap-x-4 gap-y-1.5">
         {channels.map((c) => (
@@ -92,6 +104,31 @@ export default function AttributionFunnel({ title, steps, byChannel, caveat }: A
           const prev = steps[i - 1];
           const fromPrev = prev && prev.count > 0 ? stepTotal / prev.count : null;
 
+          // Period-over-period signal. First step: change in entry volume. Later
+          // steps: change in the step-to-step conversion rate, in percentage
+          // points (the clearest "is the funnel leaking more than it used to?"
+          // read). Both are null until a full prior period exists to compare.
+          let deltaLabel: string | null = null;
+          let deltaPositive = true;
+          if (previousSteps && previousSteps.length === steps.length) {
+            if (i === 0) {
+              const prevEntry = previousSteps[0]?.count ?? 0;
+              if (prevEntry > 0) {
+                const frac = (stepTotal - prevEntry) / prevEntry;
+                deltaPositive = frac >= 0;
+                deltaLabel = `${Math.abs(frac * 100).toFixed(1)}%`;
+              }
+            } else {
+              const prevPrevCount = previousSteps[i - 1]?.count ?? 0;
+              const prevConv = prevPrevCount > 0 ? (previousSteps[i]?.count ?? 0) / prevPrevCount : null;
+              if (fromPrev !== null && prevConv !== null) {
+                const pp = (fromPrev - prevConv) * 100;
+                deltaPositive = pp >= 0;
+                deltaLabel = `${Math.abs(pp).toFixed(1)}pp`;
+              }
+            }
+          }
+
           return (
             <div key={step.key}>
               <div className="flex items-baseline justify-between gap-3 text-[12px]">
@@ -103,11 +140,18 @@ export default function AttributionFunnel({ title, steps, byChannel, caveat }: A
                   {fromPrev !== null && (
                     <span className="ml-2 text-ink-faint">({(fromPrev * 100).toFixed(1)}% of prev)</span>
                   )}
+                  {deltaLabel && (
+                    <span className={`ml-2 ${deltaPositive ? "text-positive" : "text-negative"}`}>
+                      {deltaPositive ? "▲" : "▼"} {deltaLabel}
+                    </span>
+                  )}
                 </span>
               </div>
 
-              {/* Centred track gives the classic funnel taper; segments stack across it. */}
-              <div className="mt-1.5 flex h-6 justify-center bg-canvas">
+              {/* Left-aligned track: the taper still reads as a funnel, and keeping
+                  every bar anchored to the same left edge makes step-to-step drop-off
+                  easier to compare by eye than a centred taper does. */}
+              <div className="mt-1.5 flex h-6 justify-start bg-canvas">
                 <div className="flex h-6" style={{ width: `${widthPct}%` }}>
                   {channels.map((c) => {
                     const count = c.steps[i]?.count ?? 0;

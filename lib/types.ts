@@ -11,7 +11,27 @@ export interface TrafficMetrics {
 export interface SignupMetrics {
   signups: number;
   activatedUsers: number;
-  activationRate: number; // 0-1
+  /**
+   * Legacy same-window event ratio: activation events / signup events counted
+   * independently over the period. Can exceed 1 (e.g. existing users activating
+   * this period inflate the numerator), so it is NOT a real conversion rate and
+   * is no longer what the dashboard displays — kept only for backward compat with
+   * insights/sample data. Prefer `cohortActivationRate`.
+   */
+  activationRate: number;
+  /**
+   * Cohort activation over a fixed trailing 30-day window: of the distinct persons
+   * who signed up in that window, the share who have since fired the activation
+   * event. A true cohort conversion, so always 0–1. Rolling snapshot (like
+   * `PipelineMetrics.winRate`) — read from the latest day, never summed across days.
+   * `null` when there were no signups in the window. Optional so daily snapshots
+   * written before this field existed still parse.
+   */
+  cohortActivationRate?: number | null;
+  /** Distinct persons who signed up within the cohort window (denominator of `cohortActivationRate`). */
+  cohortSignups?: number;
+  /** Of `cohortSignups`, the distinct count who have since activated (numerator). */
+  cohortActivated?: number;
 }
 
 export interface PipelineMetrics {
