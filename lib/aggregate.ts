@@ -61,6 +61,38 @@ function sumTraffic(entries: DailyMetrics[]): TrafficMetrics | null {
     for (const p of t.topPages ?? []) pageTotals.set(p.title, (pageTotals.get(p.title) ?? 0) + p.views);
   }
 
+  // Aggregate the rich per-channel breakdown across days. Counts are summed;
+  // engagementRate is recomputed from the summed engagedSessions/sessions rather
+  // than averaged (a ratio isn't additive). Only days that carry a breakdown
+  // (GA4 days, not the PostHog traffic fallback) contribute.
+  const channelDetail = new Map<string, { sessions: number; users: number; newUsers: number; engagedSessions: number; conversions: number }>();
+  for (const t of withTraffic) {
+    for (const c of t.channelBreakdown ?? []) {
+      const e = channelDetail.get(c.channel) ?? { sessions: 0, users: 0, newUsers: 0, engagedSessions: 0, conversions: 0 };
+      channelDetail.set(c.channel, {
+        sessions: e.sessions + c.sessions,
+        users: e.users + c.users,
+        newUsers: e.newUsers + c.newUsers,
+        engagedSessions: e.engagedSessions + c.engagedSessions,
+        conversions: e.conversions + c.conversions,
+      });
+    }
+  }
+  const channelBreakdown =
+    channelDetail.size > 0
+      ? [...channelDetail.entries()]
+          .map(([channel, v]) => ({
+            channel,
+            sessions: v.sessions,
+            users: v.users,
+            newUsers: v.newUsers,
+            engagedSessions: v.engagedSessions,
+            engagementRate: v.sessions > 0 ? v.engagedSessions / v.sessions : 0,
+            conversions: v.conversions,
+          }))
+          .sort((a, b) => b.sessions - a.sessions)
+      : undefined;
+
   return {
     sessions: withTraffic.reduce((s, t) => s + t.sessions, 0),
     newUsers: withTraffic.reduce((s, t) => s + t.newUsers, 0),
@@ -73,6 +105,7 @@ function sumTraffic(entries: DailyMetrics[]): TrafficMetrics | null {
       .map(([title, views]) => ({ title, views }))
       .sort((a, b) => b.views - a.views)
       .slice(0, 8),
+    channelBreakdown,
   };
 }
 

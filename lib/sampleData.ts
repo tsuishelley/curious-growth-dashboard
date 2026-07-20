@@ -53,6 +53,27 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
   const newUsers = hasGa4 ? Math.round((sessions * randomBetween(30, 45)) / 100) : 0;
   const activeUsers = hasGa4 ? Math.round(newUsers * 1.4) : 0;
 
+  const channelBreakdown = hasGa4
+    ? ([
+        ["Organic Search", 0.4],
+        ["Direct", 0.25],
+        ["Referral", 0.2],
+        ["Paid Search", 0.15],
+      ] as [string, number][]).map(([channel, share]) => {
+        const cs = Math.round(sessions * share);
+        const engagementRate = randomBetween(45, 72) / 100;
+        return {
+          channel,
+          sessions: cs,
+          users: Math.round((cs * randomBetween(75, 92)) / 100),
+          newUsers: Math.round((cs * randomBetween(28, 45)) / 100),
+          engagedSessions: Math.round(cs * engagementRate),
+          engagementRate,
+          conversions: Math.round((cs * randomBetween(1, 4)) / 100),
+        };
+      })
+    : [];
+
   const signups = hasPosthog ? Math.round((sessions * randomBetween(4, 9)) / 100) : 0;
   const activatedUsers = hasPosthog ? Math.round((signups * randomBetween(35, 65)) / 100) : 0;
 
@@ -109,12 +130,8 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
           sessions,
           newUsers,
           activeUsers,
-          topChannels: [
-            { channel: "Organic Search", sessions: Math.round(sessions * 0.4) },
-            { channel: "Direct", sessions: Math.round(sessions * 0.25) },
-            { channel: "Referral", sessions: Math.round(sessions * 0.2) },
-            { channel: "Paid Search", sessions: Math.round(sessions * 0.15) },
-          ],
+          topChannels: channelBreakdown.map((c) => ({ channel: c.channel, sessions: c.sessions })),
+          channelBreakdown,
           topPages: [
             { title: "Home", views: Math.round(sessions * 0.9) },
             { title: "Pricing", views: Math.round(sessions * 0.35) },

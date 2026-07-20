@@ -12,6 +12,7 @@ import TopListCard from "@/components/TopListCard";
 import AttributionFunnel from "@/components/AttributionFunnel";
 import UnitEconomics from "@/components/UnitEconomics";
 import GoalsCard from "@/components/GoalsCard";
+import ChannelBreakdownTable from "@/components/ChannelBreakdownTable";
 import { getCompanyEconomics } from "@/lib/config/economics";
 import { computeUnitEconomics, computeGoals } from "@/lib/economics";
 
@@ -490,12 +491,19 @@ export default function CompanyMetricsView({
             />
           </div>
         )}
-        {current.traffic?.topChannels && current.traffic.topChannels.length > 0 && (
-          <TopListCard
-            title={`Sessions by Channel (${rangeLabel})`}
-            items={current.traffic.topChannels.map((c) => ({ label: c.channel, value: c.sessions }))}
-            source={trafficSource}
-          />
+        {current.traffic?.channelBreakdown && current.traffic.channelBreakdown.length > 0 ? (
+          <div className="lg:col-span-2">
+            <ChannelBreakdownTable channels={current.traffic.channelBreakdown} rangeLabel={rangeLabel} />
+          </div>
+        ) : (
+          current.traffic?.topChannels &&
+          current.traffic.topChannels.length > 0 && (
+            <TopListCard
+              title={`Sessions by Channel (${rangeLabel})`}
+              items={current.traffic.topChannels.map((c) => ({ label: c.channel, value: c.sessions }))}
+              source={trafficSource}
+            />
+          )
         )}
         {current.traffic?.topPages && current.traffic.topPages.length > 0 && (
           <TopListCard

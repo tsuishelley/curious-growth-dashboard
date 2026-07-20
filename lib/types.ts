@@ -1,11 +1,23 @@
 import type { SourceType } from "@/lib/config/portfolio";
 
+export interface ChannelDetail {
+  channel: string;
+  sessions: number;
+  users: number;
+  newUsers: number;
+  engagedSessions: number;
+  engagementRate: number; // 0-1
+  conversions: number;
+}
+
 export interface TrafficMetrics {
   sessions: number;
   newUsers: number;
   activeUsers: number;
   topChannels: { channel: string; sessions: number }[];
   topPages: { title: string; views: number }[];
+  /** Richer per-channel breakdown (users, engaged sessions, engagement rate, conversions) from GA4. Optional so traffic docs stored before this field existed, and the PostHog traffic fallback (which doesn't populate it), still parse. */
+  channelBreakdown?: ChannelDetail[];
 }
 
 export interface SignupMetrics {

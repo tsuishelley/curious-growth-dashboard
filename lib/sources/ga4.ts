@@ -1,6 +1,6 @@
 import { BetaAnalyticsDataClient } from "@google-analytics/data";
 import { GA4_SERVICE_ACCOUNT_ENV, type PortfolioCompany } from "@/lib/config/portfolio";
-import type { SourceStatus, TrafficMetrics } from "@/lib/types";
+import type { ChannelDetail, SourceStatus, TrafficMetrics } from "@/lib/types";
 
 let cachedClient: BetaAnalyticsDataClient | null = null;
 
@@ -54,13 +54,23 @@ export async function fetchGa4Metrics(company: PortfolioCompany, dateRangeDays =
     const activeUsers = Number(row?.metricValues?.[2]?.value ?? 0);
 
     const [channelReport, pagesReport] = await Promise.all([
+      // Rich per-channel breakdown. These five metrics are all standard and
+      // widely supported; `conversions` is fetched separately below because on
+      // properties migrated to Key Events it can error, and we don't want that
+      // to lose the whole breakdown.
       client.runReport({
         property: propertyId,
         dateRanges: [{ startDate: `${dateRangeDays}daysAgo`, endDate: "today" }],
         dimensions: [{ name: "sessionDefaultChannelGroup" }],
-        metrics: [{ name: "sessions" }],
+        metrics: [
+          { name: "sessions" },
+          { name: "totalUsers" },
+          { name: "newUsers" },
+          { name: "engagedSessions" },
+          { name: "engagementRate" },
+        ],
         orderBys: [{ metric: { metricName: "sessions" }, desc: true }],
-        limit: 8,
+        limit: 12,
       }),
       client.runReport({
         property: propertyId,
@@ -72,10 +82,37 @@ export async function fetchGa4Metrics(company: PortfolioCompany, dateRangeDays =
       }),
     ]);
 
-    const topChannels = (channelReport[0].rows ?? []).map((r) => ({
-      channel: r.dimensionValues?.[0]?.value ?? "Unknown",
-      sessions: Number(r.metricValues?.[0]?.value ?? 0),
-    }));
+    // Best-effort conversions by channel — merged in when available, skipped
+    // (0) when the property doesn't expose the "conversions" metric.
+    const conversionsByChannel = new Map<string, number>();
+    try {
+      const [convReport] = await client.runReport({
+        property: propertyId,
+        dateRanges: [{ startDate: `${dateRangeDays}daysAgo`, endDate: "today" }],
+        dimensions: [{ name: "sessionDefaultChannelGroup" }],
+        metrics: [{ name: "conversions" }],
+      });
+      for (const r of convReport.rows ?? []) {
+        conversionsByChannel.set(r.dimensionValues?.[0]?.value ?? "Unknown", Number(r.metricValues?.[0]?.value ?? 0));
+      }
+    } catch {
+      // conversions metric unavailable on this property — leave the map empty.
+    }
+
+    const channelBreakdown: ChannelDetail[] = (channelReport[0].rows ?? []).map((r) => {
+      const channel = r.dimensionValues?.[0]?.value ?? "Unknown";
+      return {
+        channel,
+        sessions: Number(r.metricValues?.[0]?.value ?? 0),
+        users: Number(r.metricValues?.[1]?.value ?? 0),
+        newUsers: Number(r.metricValues?.[2]?.value ?? 0),
+        engagedSessions: Number(r.metricValues?.[3]?.value ?? 0),
+        engagementRate: Number(r.metricValues?.[4]?.value ?? 0),
+        conversions: conversionsByChannel.get(channel) ?? 0,
+      };
+    });
+
+    const topChannels = channelBreakdown.map((c) => ({ channel: c.channel, sessions: c.sessions })).slice(0, 8);
 
     const topPages = (pagesReport[0].rows ?? []).map((r) => ({
       title: r.dimensionValues?.[0]?.value ?? "Unknown",
@@ -84,7 +121,7 @@ export async function fetchGa4Metrics(company: PortfolioCompany, dateRangeDays =
 
     return {
       status: { source: "ga4", connected: true },
-      traffic: { sessions, newUsers, activeUsers, topChannels, topPages },
+      traffic: { sessions, newUsers, activeUsers, topChannels, topPages, channelBreakdown },
       visitorCount: sessions,
     };
   } catch (err) {
