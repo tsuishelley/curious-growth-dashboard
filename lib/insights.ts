@@ -37,6 +37,8 @@ function buildComparison(metrics: DailyMetrics[]) {
       newContacts: thisWeek.pipeline.newContacts,
       newMqls: thisWeek.pipeline.newMqls,
       newMqlsWoWPct: pct(thisWeek.pipeline.newMqls, priorWeek.pipeline?.newMqls),
+      demosBooked: thisWeek.pipeline.demosBooked,
+      demosBookedWoWPct: pct(thisWeek.pipeline.demosBooked, priorWeek.pipeline?.demosBooked),
       newDeals: thisWeek.pipeline.newDeals,
       newPipelineValue: thisWeek.pipeline.newPipelineValue,
       newPipelineWoWPct: pct(thisWeek.pipeline.newPipelineValue, priorWeek.pipeline?.newPipelineValue),

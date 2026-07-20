@@ -27,6 +27,7 @@ function resolveFunnelValue(
   if (stage.source === "hubspot") {
     if (!data.hubspot.funnelCounts) return 0;
     if (stage.key === "mql") return data.hubspot.funnelCounts.mql;
+    if (stage.key === "demo") return data.hubspot.funnelCounts.demo;
     if (stage.key === "customer") return data.hubspot.funnelCounts.customer;
     return data.hubspot.funnelCounts.lead;
   }

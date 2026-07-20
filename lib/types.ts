@@ -37,6 +37,8 @@ export interface SignupMetrics {
 export interface PipelineMetrics {
   newContacts: number;
   newMqls: number;
+  /** Meetings/demos booked in the period (HubSpot meeting engagements created in the window). Bridges the marketing funnel (MQL) to the sales funnel (deals). Optional so pipeline docs stored before this field existed still parse. */
+  demosBooked?: number;
   newDeals: number;
   newPipelineValue: number;
   wonDeals: number;

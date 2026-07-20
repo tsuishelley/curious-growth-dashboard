@@ -66,6 +66,7 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
 
   const newContacts = hasHubspot ? seededDay(dayIndex, 12, 0.15, 0.4) : 0;
   const newMqls = hasHubspot ? Math.round((newContacts * randomBetween(20, 35)) / 100) : 0;
+  const demosBooked = hasHubspot ? Math.round((newMqls * randomBetween(40, 70)) / 100) : 0;
   const newDeals = hasHubspot ? Math.round((newMqls * randomBetween(30, 50)) / 100) : 0;
   const newPipelineValue = hasHubspot ? newDeals * randomBetween(4000, 12000) : 0;
   const wonDeals = hasHubspot ? Math.round((newDeals * randomBetween(10, 25)) / 100) : 0;
@@ -95,6 +96,7 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
     activated: activatedUsers,
     lead: newContacts,
     mql: newMqls,
+    demo: demosBooked,
     customer: wonDeals,
   };
 
@@ -134,7 +136,7 @@ export function generateDailyMetrics(company: PortfolioCompany, dayIndex: number
         }
       : null,
     pipeline: hasHubspot
-      ? { newContacts, newMqls, newDeals, newPipelineValue, wonDeals, wonValue, lostDeals, winRate, avgDaysToCloseDays }
+      ? { newContacts, newMqls, demosBooked, newDeals, newPipelineValue, wonDeals, wonValue, lostDeals, winRate, avgDaysToCloseDays }
       : null,
     searchConsole: hasSearchConsole
       ? {

@@ -25,8 +25,8 @@ interface PipelineStage {
 export interface HubspotResult {
   status: SourceStatus;
   pipeline: PipelineMetrics | null;
-  /** Counts used for the Lead / MQL / Customer funnel stages. */
-  funnelCounts: { lead: number; mql: number; customer: number } | null;
+  /** Counts used for the Lead / MQL / Demo / Customer funnel stages. */
+  funnelCounts: { lead: number; mql: number; demo: number; customer: number } | null;
   /** Snapshot of currently open deals across every stage of the default HubSpot pipeline. */
   dealStageFunnel: FunnelStageValue[] | null;
 }
@@ -52,10 +52,14 @@ export async function fetchHubspotMetrics(company: PortfolioCompany, days = 1): 
     const sinceMs = Date.now() - days * MS_PER_DAY;
     const closedSinceMs = Date.now() - CLOSED_DEALS_WINDOW_DAYS * MS_PER_DAY;
 
-    const [contacts, createdDeals, closedDeals, stageFunnel] = await Promise.all([
+    const [contacts, createdDeals, closedDeals, meetings, stageFunnel] = await Promise.all([
       searchObjects(token, "contacts", "createdate", sinceMs, ["lifecyclestage"]),
       searchObjects(token, "deals", "createdate", sinceMs, ["dealstage", "amount"]),
       searchObjects(token, "deals", "closedate", closedSinceMs, ["dealstage", "amount", "createdate", "closedate"]),
+      // Demos booked = meeting engagements created in the window. Bridges the
+      // marketing funnel (MQL) to the sales funnel (deals). Only counts meetings
+      // actually logged in HubSpot, so like win rate it reflects CRM hygiene.
+      searchObjects(token, "meetings", "hs_createdate", sinceMs, []),
       fetchDealStageFunnel(token),
     ]);
 
@@ -63,6 +67,7 @@ export async function fetchHubspotMetrics(company: PortfolioCompany, days = 1): 
     const newMqls = contacts.results.filter(
       (c) => (c.properties?.lifecyclestage ?? "").toLowerCase() === MQL_LIFECYCLE_STAGE
     ).length;
+    const demosBooked = meetings.total;
 
     const wonDealsList = createdDeals.results.filter((d) =>
       (d.properties?.dealstage ?? "").toLowerCase().includes(CLOSED_WON_STAGE)
@@ -101,6 +106,7 @@ export async function fetchHubspotMetrics(company: PortfolioCompany, days = 1): 
       pipeline: {
         newContacts,
         newMqls,
+        demosBooked,
         newDeals,
         newPipelineValue,
         wonDeals,
@@ -109,7 +115,7 @@ export async function fetchHubspotMetrics(company: PortfolioCompany, days = 1): 
         winRate,
         avgDaysToCloseDays,
       },
-      funnelCounts: { lead: newContacts, mql: newMqls, customer: wonDeals },
+      funnelCounts: { lead: newContacts, mql: newMqls, demo: demosBooked, customer: wonDeals },
       dealStageFunnel: stageFunnel,
     };
   } catch (err) {
@@ -165,7 +171,7 @@ const MAX_PAGES = 50;
 
 async function searchObjects(
   token: string,
-  objectType: "contacts" | "deals",
+  objectType: "contacts" | "deals" | "meetings",
   dateProperty: string | null,
   sinceMs: number | null,
   properties: string[]

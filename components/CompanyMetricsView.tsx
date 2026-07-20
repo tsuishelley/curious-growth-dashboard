@@ -271,6 +271,20 @@ export default function CompanyMetricsView({
               changeLabel={changeLabel}
               source="hubspot"
             />
+            {current.pipeline.demosBooked != null && (
+              <KpiCard
+                label={`Demos Booked (${rangeLabel})`}
+                value={current.pipeline.demosBooked.toLocaleString()}
+                changeFraction={
+                  pipelineComparable && previous.pipeline?.demosBooked != null
+                    ? weekOverWeekChange(current.pipeline.demosBooked, previous.pipeline.demosBooked)
+                    : null
+                }
+                changeLabel={changeLabel}
+                source="hubspot"
+                hint="Meeting engagements booked (created) in HubSpot during the period — the bridge from MQL to a sales conversation. Only counts meetings actually logged in HubSpot, so it reflects CRM hygiene and can read low if reps don't log every call."
+              />
+            )}
             {latestDay.pipeline?.winRate != null && (
               <KpiCard
                 label="Win Rate (current)"

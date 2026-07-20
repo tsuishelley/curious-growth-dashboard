@@ -127,7 +127,7 @@ interface HubspotRecord {
 
 async function searchAllPages(
   token: string,
-  objectType: "contacts" | "deals",
+  objectType: "contacts" | "deals" | "meetings",
   dateProperty: string,
   sinceMs: number,
   properties: string[]
@@ -169,10 +169,11 @@ async function fetchHubspotHistoricalByDay(
   const sinceMs = Date.now() - days * MS_PER_DAY;
   const closedSinceMs = Date.now() - (days + CLOSED_DEALS_WINDOW_DAYS) * MS_PER_DAY;
 
-  const [contacts, createdDeals, closedDeals] = await Promise.all([
+  const [contacts, createdDeals, closedDeals, meetings] = await Promise.all([
     searchAllPages(token, "contacts", "createdate", sinceMs, ["createdate", "lifecyclestage"]),
     searchAllPages(token, "deals", "createdate", sinceMs, ["createdate", "dealstage", "amount"]),
     searchAllPages(token, "deals", "closedate", closedSinceMs, ["createdate", "closedate", "dealstage", "amount"]),
+    searchAllPages(token, "meetings", "hs_createdate", sinceMs, ["hs_createdate"]),
   ]);
 
   // HubSpot returns createdate/closedate as ISO date strings, not epoch numbers.
@@ -188,6 +189,13 @@ async function fetchHubspotHistoricalByDay(
     if (!d.properties?.createdate) continue;
     const day = format(new Date(d.properties.createdate), "yyyy-MM-dd");
     dealsByDay.set(day, [...(dealsByDay.get(day) ?? []), d]);
+  }
+
+  const meetingsByDay = new Map<string, number>();
+  for (const m of meetings) {
+    if (!m.properties?.hs_createdate) continue;
+    const day = format(new Date(m.properties.hs_createdate), "yyyy-MM-dd");
+    meetingsByDay.set(day, (meetingsByDay.get(day) ?? 0) + 1);
   }
 
   for (let i = 0; i < days; i++) {
@@ -229,6 +237,7 @@ async function fetchHubspotHistoricalByDay(
     map.set(date, {
       newContacts,
       newMqls,
+      demosBooked: meetingsByDay.get(date) ?? 0,
       newDeals,
       newPipelineValue,
       wonDeals,
@@ -472,6 +481,7 @@ function buildFunnel(
       count = stage.key === "activated" ? signups?.activatedUsers ?? 0 : signups?.signups ?? 0;
     } else if (stage.source === "hubspot") {
       if (stage.key === "mql") count = pipeline?.newMqls ?? 0;
+      else if (stage.key === "demo") count = pipeline?.demosBooked ?? 0;
       else if (stage.key === "customer") count = pipeline?.wonDeals ?? 0;
       else count = pipeline?.newContacts ?? 0;
     }

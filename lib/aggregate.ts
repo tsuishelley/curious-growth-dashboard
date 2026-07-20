@@ -24,7 +24,7 @@ export interface PeriodAggregate {
   signups: SignupMetrics | null;
   pipeline: Pick<
     PipelineMetrics,
-    "newContacts" | "newMqls" | "newDeals" | "newPipelineValue" | "wonDeals" | "wonValue"
+    "newContacts" | "newMqls" | "demosBooked" | "newDeals" | "newPipelineValue" | "wonDeals" | "wonValue"
   > | null;
   searchConsole: SearchConsoleMetrics | null;
   googleAds: GoogleAdsMetrics | null;
@@ -92,6 +92,7 @@ function sumPipeline(entries: DailyMetrics[]): PeriodAggregate["pipeline"] {
   return {
     newContacts: withPipeline.reduce((s, p) => s + p.newContacts, 0),
     newMqls: withPipeline.reduce((s, p) => s + p.newMqls, 0),
+    demosBooked: withPipeline.reduce((s, p) => s + (p.demosBooked ?? 0), 0),
     newDeals: withPipeline.reduce((s, p) => s + p.newDeals, 0),
     newPipelineValue: withPipeline.reduce((s, p) => s + p.newPipelineValue, 0),
     wonDeals: withPipeline.reduce((s, p) => s + p.wonDeals, 0),
