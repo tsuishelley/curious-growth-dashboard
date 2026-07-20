@@ -23,7 +23,7 @@ import {
   GA4_SERVICE_ACCOUNT_ENV,
   type PortfolioCompany,
 } from "../lib/config/portfolio";
-import type { DailyMetrics, FunnelStageValue, PipelineMetrics, PostHogRevenueMetrics, TrafficMetrics } from "../lib/types";
+import type { DailyMetrics, FunnelStageValue, PipelineMetrics, PostHogRevenueMetrics, SignupMetrics, TrafficMetrics } from "../lib/types";
 
 const DEFAULT_BACKFILL_DAYS = 180;
 // HubSpot contact/deal history beyond ~30 days looks contaminated by what
@@ -294,6 +294,64 @@ async function fetchPosthogRevenueHistoricalByDay(
   return map;
 }
 
+// ---------- PostHog signups / activation ----------
+
+/**
+ * Reconstructs daily signup + activation event counts from PostHog history, so
+ * the signups trend and the funnel's Signup/Activated stages have real history
+ * (not just today's live-synced day). These are the same per-day event counts
+ * the live sync stores; the rolling 30-day `cohortActivationRate` is intentionally
+ * left off historical days (it's a point-in-time snapshot read from the latest
+ * day, not something meaningful to reconstruct per past day).
+ */
+async function fetchPosthogSignupsHistoricalByDay(
+  company: PortfolioCompany,
+  days: number
+): Promise<Map<string, SignupMetrics>> {
+  const map = new Map<string, SignupMetrics>();
+  const config = company.sources.posthog;
+  if (!config) return map;
+
+  const apiKey = process.env[config.apiKeyEnv];
+  const projectId = process.env[config.projectIdEnv];
+  const host = (config.hostEnv && process.env[config.hostEnv]) || "https://app.posthog.com";
+  if (!apiKey || !projectId) return map;
+
+  const signupEvent = config.signupEvent ?? "sign_up";
+  const activationEvent = config.activationEvent ?? "activated";
+  const dayLimit = days + 10;
+
+  const [signupRows, activationRows] = await Promise.all([
+    posthogQuery(
+      host, projectId, apiKey,
+      `select toDate(timestamp) as day, count() as c from events
+       where event = {event} and timestamp >= now() - interval ${days} day
+       group by day order by day desc limit ${dayLimit}`,
+      { event: signupEvent }
+    ),
+    posthogQuery(
+      host, projectId, apiKey,
+      `select toDate(timestamp) as day, count() as c from events
+       where event = {event} and timestamp >= now() - interval ${days} day
+       group by day order by day desc limit ${dayLimit}`,
+      { event: activationEvent }
+    ),
+  ]);
+
+  const signupsByDay = new Map<string, number>();
+  for (const [day, c] of signupRows as [string, number][]) signupsByDay.set(String(day).slice(0, 10), Number(c));
+  const activatedByDay = new Map<string, number>();
+  for (const [day, c] of activationRows as [string, number][]) activatedByDay.set(String(day).slice(0, 10), Number(c));
+
+  for (const day of new Set([...signupsByDay.keys(), ...activatedByDay.keys()])) {
+    const signups = signupsByDay.get(day) ?? 0;
+    const activatedUsers = activatedByDay.get(day) ?? 0;
+    map.set(day, { signups, activatedUsers, activationRate: signups > 0 ? activatedUsers / signups : 0 });
+  }
+
+  return map;
+}
+
 // ---------- PostHog website traffic (fallback when GA4 isn't connected) ----------
 
 async function posthogQuery(host: string, projectId: string, apiKey: string, hogql: string, values?: Record<string, unknown>) {
@@ -401,11 +459,18 @@ async function fetchPosthogTrafficHistoricalByDay(
 
 // ---------- Combine + write ----------
 
-function buildFunnel(company: PortfolioCompany, traffic: TrafficMetrics | null, pipeline: PipelineMetrics | null): FunnelStageValue[] {
+function buildFunnel(
+  company: PortfolioCompany,
+  traffic: TrafficMetrics | null,
+  pipeline: PipelineMetrics | null,
+  signups: SignupMetrics | null
+): FunnelStageValue[] {
   return company.funnel.map((stage) => {
     let count = 0;
     if (stage.source === "ga4") count = traffic?.sessions ?? 0;
-    else if (stage.source === "hubspot") {
+    else if (stage.source === "posthog") {
+      count = stage.key === "activated" ? signups?.activatedUsers ?? 0 : signups?.signups ?? 0;
+    } else if (stage.source === "hubspot") {
       if (stage.key === "mql") count = pipeline?.newMqls ?? 0;
       else if (stage.key === "customer") count = pipeline?.wonDeals ?? 0;
       else count = pipeline?.newContacts ?? 0;
@@ -419,19 +484,21 @@ async function backfillCompany(company: PortfolioCompany, days: number) {
   const hasHubspot = !!company.sources.hubspot && BACKFILL_HUBSPOT;
   const hasPosthogRevenue = !!company.sources.posthog?.revenueEvent;
   const hasPosthogTraffic = !!company.sources.posthog?.trackWebsiteTraffic;
+  const hasPosthogSignups = !!company.sources.posthog;
 
-  if (!hasGa4 && !hasHubspot && !hasPosthogRevenue && !hasPosthogTraffic) {
+  if (!hasGa4 && !hasHubspot && !hasPosthogRevenue && !hasPosthogTraffic && !hasPosthogSignups) {
     console.log(`${company.name}: nothing backfillable configured, skipping.`);
     return;
   }
 
   console.log(
     `${company.name}: fetching ${days} days of GA4 history + ${HUBSPOT_BACKFILL_DAYS} days of HubSpot history` +
+      (hasPosthogSignups ? ` + ${days} days of PostHog signup history` : "") +
       (hasPosthogRevenue ? ` + ${days} days of PostHog revenue history` : "") +
       (hasPosthogTraffic ? ` + ${days} days of PostHog traffic history` : "") +
       "..."
   );
-  const [ga4TrafficByDay, pipelineByDay, revenueByDay, posthogTrafficByDay] = await Promise.all([
+  const [ga4TrafficByDay, pipelineByDay, revenueByDay, posthogTrafficByDay, signupsByDay] = await Promise.all([
     hasGa4 ? fetchGa4HistoricalByDay(company, days) : Promise.resolve(new Map<string, TrafficMetrics>()),
     hasHubspot
       ? fetchHubspotHistoricalByDay(company, HUBSPOT_BACKFILL_DAYS)
@@ -442,6 +509,9 @@ async function backfillCompany(company: PortfolioCompany, days: number) {
     hasPosthogTraffic
       ? fetchPosthogTrafficHistoricalByDay(company, days)
       : Promise.resolve(new Map<string, TrafficMetrics>()),
+    hasPosthogSignups
+      ? fetchPosthogSignupsHistoricalByDay(company, days)
+      : Promise.resolve(new Map<string, SignupMetrics>()),
   ]);
 
   const collectionRef = adminDb().collection("companies").doc(company.id).collection("dailyMetrics");
@@ -475,7 +545,8 @@ async function backfillCompany(company: PortfolioCompany, days: number) {
     const trafficSource = ga4Traffic ? "ga4" : posthogTraffic ? "posthog" : null;
     const pipeline = pipelineByDay.get(date) ?? null;
     const posthogRevenue = revenueByDay.get(date) ?? null;
-    if (!traffic && !pipeline && !posthogRevenue) continue; // nothing real to write for this day
+    const signups = signupsByDay.get(date) ?? null;
+    if (!traffic && !pipeline && !posthogRevenue && !signups) continue; // nothing real to write for this day
 
     const metrics: DailyMetrics = {
       date,
@@ -483,19 +554,19 @@ async function backfillCompany(company: PortfolioCompany, days: number) {
       syncedAt: new Date().toISOString(),
       traffic,
       trafficSource,
-      signups: null,
+      signups,
       pipeline,
       searchConsole: null, // not backfilled yet
       googleAds: null, // not backfilled yet
       posthogRevenue,
       attributionFunnel: null, // point-in-time snapshot only, not backfillable historically
-      funnel: buildFunnel(company, traffic, pipeline),
+      funnel: buildFunnel(company, traffic, pipeline, signups),
       dealStageFunnel: null, // can't reconstruct a historical point-in-time snapshot
       sourceStatus: [
         ...(hasGa4 ? [{ source: "ga4" as const, connected: ga4Traffic !== null }] : []),
         ...(hasHubspot ? [{ source: "hubspot" as const, connected: pipeline !== null }] : []),
-        ...(hasPosthogRevenue || hasPosthogTraffic
-          ? [{ source: "posthog" as const, connected: posthogRevenue !== null || posthogTraffic !== null }]
+        ...(hasPosthogRevenue || hasPosthogTraffic || hasPosthogSignups
+          ? [{ source: "posthog" as const, connected: posthogRevenue !== null || posthogTraffic !== null || signups !== null }]
           : []),
       ],
       sample: false,
