@@ -218,6 +218,7 @@ export default function CompanyMetricsView({
               }
               changeLabel={changeLabel}
               source="posthog"
+              hint={`Total count of sign-up events over the ${rangeLabel} window, summed from the daily syncs — the same number the Signups chart and the Funnel box below use. The attribution funnel counts something different (unique, identity-linked people through a saved PostHog funnel), so its signup figure won't match this one.`}
             />
             <KpiCard
               label="Activation Rate (30d cohort)"
@@ -281,6 +282,7 @@ export default function CompanyMetricsView({
                 }
                 changeLabel={`vs ${rangeLabel} ago`}
                 source="hubspot"
+                hint="Won ÷ (won + lost) among deals marked closed in HubSpot over the trailing 30 days. It only counts deals actually logged and closed in the CRM, so it reflects HubSpot hygiene — conversations or deals reps never logged aren't counted and can make this read higher than reality."
               />
             )}
             {latestDay.pipeline?.avgDaysToCloseDays != null && (
@@ -381,9 +383,21 @@ export default function CompanyMetricsView({
       </div>
 
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {current.traffic && <TrendChart title={`Sessions (${rangeLabel})`} data={sessionsTrend} source="ga4" />}
+        {current.traffic && (
+          <TrendChart
+            title={`Sessions (${rangeLabel})`}
+            data={sessionsTrend}
+            source="ga4"
+            periodTotal={current.traffic.sessions.toLocaleString()}
+          />
+        )}
         {current.signups && (
-          <TrendChart title={`Signups (${rangeLabel})`} data={signupsTrend} source="posthog" />
+          <TrendChart
+            title={`Signups (${rangeLabel})`}
+            data={signupsTrend}
+            source="posthog"
+            periodTotal={current.signups.signups.toLocaleString()}
+          />
         )}
         {current.posthogRevenue && (
           <MonthlyBarChart
@@ -400,6 +414,7 @@ export default function CompanyMetricsView({
             title={`New pipeline value (${rangeLabel})`}
             data={pipelineTrend}
             source="hubspot"
+            periodTotal={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
           />
         )}
         {current.searchConsole && (
@@ -407,6 +422,7 @@ export default function CompanyMetricsView({
             title={`Search clicks (${rangeLabel})`}
             data={searchClicksTrend}
             source="searchconsole"
+            periodTotal={current.searchConsole.clicks.toLocaleString()}
           />
         )}
         {current.googleAds && (
@@ -414,6 +430,7 @@ export default function CompanyMetricsView({
             title={`Ad spend (${rangeLabel})`}
             data={adSpendTrend}
             source="googleads"
+            periodTotal={`$${current.googleAds.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
           />
         )}
         <FunnelChart stages={current.funnel} source={funnelSources} />
@@ -432,7 +449,7 @@ export default function CompanyMetricsView({
               steps={latestDay.attributionFunnel.steps}
               byChannel={latestDay.attributionFunnel.byChannel}
               previousSteps={priorAttributionSteps}
-              caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate."
+              caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate. Its counts also won't tie out to the Total Signups card or the Funnel box above: those tally raw sign-up events, while this counts unique identity-linked people through a saved PostHog funnel — a different measure, not a discrepancy."
             />
           </div>
         )}

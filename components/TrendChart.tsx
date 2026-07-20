@@ -9,6 +9,12 @@ interface TrendChartProps {
   title: string;
   data: { date: string; value: number }[];
   source?: SourceType;
+  /**
+   * Pre-formatted period total (e.g. "5,692" or "$12k") shown under the title.
+   * The chart plots per-day values, so a glance at it doesn't obviously sum to
+   * the matching KPI card — printing the total makes the two tie out explicitly.
+   */
+  periodTotal?: string;
 }
 
 // Recharts renders SVG, so it can't inherit Tailwind classes -- these mirror
@@ -18,7 +24,7 @@ const AXIS_COLOR = "#9c9890";
 const RULE_COLOR = "#e5e2db";
 const MONO_STACK = '"Atlas Typewriter", ui-monospace, Menlo, monospace';
 
-export default function TrendChart({ title, data, source }: TrendChartProps) {
+export default function TrendChart({ title, data, source, periodTotal }: TrendChartProps) {
   // ResponsiveContainer measures its parent via ResizeObserver on mount, which
   // can race with hydration in Next.js and render at 0 width — deferring the
   // chart to a post-mount render reliably avoids the blank-on-first-load bug.
@@ -28,6 +34,11 @@ export default function TrendChart({ title, data, source }: TrendChartProps) {
   return (
     <div className="border border-rule bg-paper p-5">
       <p className="label-mono text-ink-faint">{title}</p>
+      {periodTotal && (
+        <p className="mt-1 text-[12px] text-ink-faint">
+          Total this period: <span className="font-mono text-ink">{periodTotal}</span>
+        </p>
+      )}
       <div className="mt-4 h-48">
         {mounted && (
           <ResponsiveContainer width="100%" height="100%">

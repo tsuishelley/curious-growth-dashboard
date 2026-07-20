@@ -155,10 +155,14 @@ async function fetchDealStageFunnel(token: string): Promise<FunnelStageValue[] |
   }));
 }
 
-// Note: HubSpot's CRM search API caps results at 100/page; `total` reflects the
-// full filtered count, but property-based breakdowns (e.g. MQL count) are only
-// computed over the first page. Fine for a daily leading-indicator view; switch
-// to paginated fetching if a company's daily volume regularly exceeds 100.
+// HubSpot's CRM search API returns at most 100 results per page. We paginate
+// through every page so property-based breakdowns (MQL count, won/lost for win
+// rate, open deals per stage) are computed over the FULL result set — otherwise
+// a company with >100 deals in the window gets a win rate off a truncated slice.
+// MAX_PAGES caps a pathological pull (e.g. tens of thousands of open deals) at
+// 5,000 records rather than looping unbounded.
+const MAX_PAGES = 50;
+
 async function searchObjects(
   token: string,
   objectType: "contacts" | "deals",
@@ -166,26 +170,39 @@ async function searchObjects(
   sinceMs: number | null,
   properties: string[]
 ): Promise<HubspotSearchResult> {
-  const res = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/${objectType}/search`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      filterGroups:
-        dateProperty && sinceMs
-          ? [{ filters: [{ propertyName: dateProperty, operator: "GTE", value: String(sinceMs) }] }]
-          : [],
-      properties,
-      limit: 100,
-    }),
-  });
+  const results: Array<{ properties?: Record<string, string> }> = [];
+  let after: string | undefined;
+  let total = 0;
+  let pages = 0;
 
-  if (!res.ok) {
-    throw new Error(`HubSpot ${objectType} search failed: ${res.status}`);
-  }
+  do {
+    const res = await fetch(`${HUBSPOT_API_BASE}/crm/v3/objects/${objectType}/search`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${token}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        filterGroups:
+          dateProperty && sinceMs
+            ? [{ filters: [{ propertyName: dateProperty, operator: "GTE", value: String(sinceMs) }] }]
+            : [],
+        properties,
+        limit: 100,
+        after,
+      }),
+    });
 
-  const body = await res.json();
-  return { total: body.total ?? body.results?.length ?? 0, results: body.results ?? [] };
+    if (!res.ok) {
+      throw new Error(`HubSpot ${objectType} search failed: ${res.status}`);
+    }
+
+    const body = await res.json();
+    total = body.total ?? total;
+    results.push(...(body.results ?? []));
+    after = body.paging?.next?.after;
+    pages++;
+  } while (after && pages < MAX_PAGES);
+
+  return { total: total || results.length, results };
 }
