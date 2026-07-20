@@ -2,8 +2,9 @@
 
 import { useMemo, useState } from "react";
 import type { PortfolioCompany } from "@/lib/config/portfolio";
-import type { DailyMetrics } from "@/lib/types";
+import type { DailyMetrics, WeeklyInsight } from "@/lib/types";
 import { aggregatePeriod, comparableCoverage, weekOverWeekChange } from "@/lib/aggregate";
+import WeeklyInsights from "@/components/WeeklyInsights";
 import KpiCard from "@/components/KpiCard";
 import TrendChart from "@/components/TrendChart";
 import MonthlyBarChart from "@/components/MonthlyBarChart";
@@ -17,6 +18,7 @@ import { getCompanyEconomics } from "@/lib/config/economics";
 import { computeUnitEconomics, computeGoals } from "@/lib/economics";
 
 type RangeKey = "30d" | "90d" | "ytd";
+type TabKey = "overview" | "funnel" | "traffic" | "product" | "sales" | "seo" | "paid";
 
 const RANGE_OPTIONS: { key: RangeKey; label: string }[] = [
   { key: "30d", label: "Last 30 Days" },
@@ -43,11 +45,14 @@ function splitPeriods(metrics: DailyMetrics[], range: RangeKey): { currentPeriod
 export default function CompanyMetricsView({
   company,
   metrics,
+  insight,
 }: {
   company: PortfolioCompany;
   metrics: DailyMetrics[];
+  insight?: WeeklyInsight | null;
 }) {
   const [range, setRange] = useState<RangeKey>("30d");
+  const [tab, setTab] = useState<TabKey>("overview");
   // Hooks must run unconditionally on every render, so this is computed before
   // the early "no data at all" return below (splitPeriods handles an empty
   // `metrics` array fine, just returning empty slices).
@@ -195,9 +200,37 @@ export default function CompanyMetricsView({
   })();
   const dataStartsLate = earliestRealDate !== null && earliestRealDate > nominalStartDate;
 
+  // Tabs are shown only for the data a company actually has, so an empty source
+  // never renders a dead tab. Overview is always present.
+  const availableTabs: { key: TabKey; label: string }[] = [
+    { key: "overview", label: "Overview" },
+    ...(current.funnel.length > 0 ? [{ key: "funnel" as const, label: "Funnel" }] : []),
+    ...(current.traffic ? [{ key: "traffic" as const, label: "Traffic" }] : []),
+    ...(current.signups || current.posthogRevenue ? [{ key: "product" as const, label: "Product" }] : []),
+    ...(current.pipeline ? [{ key: "sales" as const, label: "Sales" }] : []),
+    ...(current.searchConsole ? [{ key: "seo" as const, label: "SEO" }] : []),
+    ...(current.googleAds ? [{ key: "paid" as const, label: "Paid" }] : []),
+  ];
+  const activeTab: TabKey = availableTabs.some((t) => t.key === tab) ? tab : "overview";
+
   return (
     <div className="space-y-6">
       {rangeSelector}
+
+      <div className="flex flex-wrap gap-1 border-b border-rule">
+        {availableTabs.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            onClick={() => setTab(t.key)}
+            className={`label-mono -mb-px border-b-2 px-4 py-2.5 transition-colors ${
+              activeTab === t.key ? "border-accent text-ink" : "border-transparent text-ink-faint hover:text-ink"
+            }`}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
 
       <p className="text-[12px] leading-relaxed text-ink-faint">
         Totals reflect real synced data only, never fabricated — a source with less history than{" "}
@@ -210,82 +243,274 @@ export default function CompanyMetricsView({
         </p>
       )}
 
-      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
-        {current.traffic && (
-          <KpiCard
-            label={`Total Sessions (${rangeLabel})`}
-            value={current.traffic.sessions.toLocaleString()}
-            changeFraction={
-              trafficComparable && previous.traffic
-                ? weekOverWeekChange(current.traffic.sessions, previous.traffic.sessions)
-                : null
-            }
-            changeLabel={changeLabel}
-            source={trafficSource}
-          />
-        )}
-        {current.signups && (
-          <>
+      {/* ---------------- OVERVIEW: AI insight + leading/lagging scorecard + goals + unit economics ---------------- */}
+      {activeTab === "overview" && (
+        <div className="space-y-6">
+          {insight && <WeeklyInsights insight={insight} />}
+
+          <div className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <h3 className="font-display text-lg text-ink">Leading indicators</h3>
+              <span className="label-mono text-ink-faint">top of funnel · {rangeLabel}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {current.traffic && (
+                <KpiCard
+                  label={`Sessions (${rangeLabel})`}
+                  value={current.traffic.sessions.toLocaleString()}
+                  changeFraction={trafficComparable && previous.traffic ? weekOverWeekChange(current.traffic.sessions, previous.traffic.sessions) : null}
+                  changeLabel={changeLabel}
+                  source={trafficSource}
+                />
+              )}
+              {current.signups && (
+                <KpiCard
+                  label={`Signups (${rangeLabel})`}
+                  value={current.signups.signups.toLocaleString()}
+                  changeFraction={signupsComparable && previous.signups ? weekOverWeekChange(current.signups.signups, previous.signups.signups) : null}
+                  changeLabel={changeLabel}
+                  source="posthog"
+                />
+              )}
+              {current.pipeline && (
+                <KpiCard
+                  label={`New MQLs (${rangeLabel})`}
+                  value={current.pipeline.newMqls.toLocaleString()}
+                  changeFraction={pipelineComparable && previous.pipeline ? weekOverWeekChange(current.pipeline.newMqls, previous.pipeline.newMqls) : null}
+                  changeLabel={changeLabel}
+                  source="hubspot"
+                />
+              )}
+              {current.pipeline?.demosBooked != null && (
+                <KpiCard
+                  label={`Demos Booked (${rangeLabel})`}
+                  value={current.pipeline.demosBooked.toLocaleString()}
+                  changeFraction={pipelineComparable && previous.pipeline?.demosBooked != null ? weekOverWeekChange(current.pipeline.demosBooked, previous.pipeline.demosBooked) : null}
+                  changeLabel={changeLabel}
+                  source="hubspot"
+                />
+              )}
+              {current.searchConsole && !current.pipeline && (
+                <KpiCard
+                  label={`Search Clicks (${rangeLabel})`}
+                  value={current.searchConsole.clicks.toLocaleString()}
+                  changeFraction={searchComparable && previous.searchConsole ? weekOverWeekChange(current.searchConsole.clicks, previous.searchConsole.clicks) : null}
+                  changeLabel={changeLabel}
+                  source="searchconsole"
+                />
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3">
+            <div className="flex items-baseline justify-between">
+              <h3 className="font-display text-lg text-ink">Lagging indicators</h3>
+              <span className="label-mono text-ink-faint">outcomes · {rangeLabel}</span>
+            </div>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+              {current.posthogRevenue && (
+                <KpiCard
+                  label={`New Revenue (${rangeLabel})`}
+                  value={`$${current.posthogRevenue.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                  changeFraction={revenueComparable && previous.posthogRevenue ? weekOverWeekChange(current.posthogRevenue.amount, previous.posthogRevenue.amount) : null}
+                  changeLabel={changeLabel}
+                  source="posthog"
+                />
+              )}
+              {current.pipeline && (
+                <KpiCard
+                  label={`New Pipeline (${rangeLabel})`}
+                  value={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
+                  changeFraction={pipelineComparable && previous.pipeline ? weekOverWeekChange(current.pipeline.newPipelineValue, previous.pipeline.newPipelineValue) : null}
+                  changeLabel={changeLabel}
+                  source="hubspot"
+                />
+              )}
+              {latestDay.pipeline?.winRate != null && (
+                <KpiCard
+                  label="Win Rate (current)"
+                  value={`${(latestDay.pipeline.winRate * 100).toFixed(0)}%`}
+                  changeFraction={pipelineComparable && previousLatestDay?.pipeline?.winRate != null ? weekOverWeekChange(latestDay.pipeline.winRate, previousLatestDay.pipeline.winRate) : null}
+                  changeLabel={`vs ${rangeLabel} ago`}
+                  source="hubspot"
+                  hint="Won ÷ (won + lost) among deals marked closed in HubSpot over the trailing 30 days. Only counts deals actually logged and closed in the CRM, so it reflects HubSpot hygiene and can read higher than reality if reps don't log every deal."
+                />
+              )}
+              {current.signups && (
+                <KpiCard
+                  label="Activation Rate (30d cohort)"
+                  value={`${((cohortActivationRate ?? current.signups.activationRate) * 100).toFixed(1)}%`}
+                  changeFraction={cohortActivationRate != null && prevCohortActivationRate != null ? weekOverWeekChange(cohortActivationRate, prevCohortActivationRate) : null}
+                  changeLabel={`vs ${rangeLabel} ago`}
+                  source="posthog"
+                  hint="Of the distinct users who signed up in the last 30 days, the share who have since hit the activation milestone. A cohort conversion, so it stays between 0–100%."
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Both render null until a company's economics/goals are filled in
+              (lib/config/economics.ts), so they stay hidden rather than showing
+              fabricated numbers. */}
+          <GoalsCard goals={goals} rangeLabel={rangeLabel} />
+          <UnitEconomics data={unitEconomics} rangeLabel={rangeLabel} />
+        </div>
+      )}
+
+      {/* ---------------- FUNNEL ---------------- */}
+      {activeTab === "funnel" && (
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <FunnelChart stages={current.funnel} source={funnelSources} />
+          {latestDay.dealStageFunnel && latestDay.dealStageFunnel.length > 0 && (
+            <FunnelChart
+              title="HubSpot Deal Pipeline (open deals)"
+              stages={latestDay.dealStageFunnel}
+              source="hubspot"
+              mode="snapshot"
+            />
+          )}
+          {latestDay.attributionFunnel && latestDay.attributionFunnel.byChannel.length > 0 && (
+            <div className="lg:col-span-2">
+              <AttributionFunnel
+                title={`${latestDay.attributionFunnel.insightName} (30d)`}
+                steps={latestDay.attributionFunnel.steps}
+                byChannel={latestDay.attributionFunnel.byChannel}
+                previousSteps={priorAttributionSteps}
+                caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate. Its counts also won't tie out to the Total Signups card or the Funnel box: those tally raw sign-up events, while this counts unique identity-linked people through a saved PostHog funnel — a different measure, not a discrepancy."
+              />
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ---------------- TRAFFIC ---------------- */}
+      {activeTab === "traffic" && current.traffic && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <KpiCard
-              label={`Total Signups (${rangeLabel})`}
-              value={current.signups.signups.toLocaleString()}
-              changeFraction={
-                signupsComparable && previous.signups
-                  ? weekOverWeekChange(current.signups.signups, previous.signups.signups)
-                  : null
-              }
+              label={`Total Sessions (${rangeLabel})`}
+              value={current.traffic.sessions.toLocaleString()}
+              changeFraction={trafficComparable && previous.traffic ? weekOverWeekChange(current.traffic.sessions, previous.traffic.sessions) : null}
               changeLabel={changeLabel}
-              source="posthog"
-              hint={`Total count of sign-up events over the ${rangeLabel} window, summed from the daily syncs — the same number the Signups chart and the Funnel box below use. The attribution funnel counts something different (unique, identity-linked people through a saved PostHog funnel), so its signup figure won't match this one.`}
+              source={trafficSource}
             />
             <KpiCard
-              label="Activation Rate (30d cohort)"
-              value={`${((cohortActivationRate ?? current.signups.activationRate) * 100).toFixed(1)}%`}
-              changeFraction={
-                cohortActivationRate != null && prevCohortActivationRate != null
-                  ? weekOverWeekChange(cohortActivationRate, prevCohortActivationRate)
-                  : null
-              }
-              changeLabel={`vs ${rangeLabel} ago`}
-              source="posthog"
-              hint="Of the distinct users who signed up in the last 30 days, the share who have since hit the activation milestone. A cohort conversion, so it stays between 0–100% — unlike a raw activations-per-signup ratio."
+              label={`New Users (${rangeLabel})`}
+              value={current.traffic.newUsers.toLocaleString()}
+              changeFraction={trafficComparable && previous.traffic ? weekOverWeekChange(current.traffic.newUsers, previous.traffic.newUsers) : null}
+              changeLabel={changeLabel}
+              source={trafficSource}
             />
-          </>
-        )}
-        {current.posthogRevenue && (
-          <KpiCard
-            label={`Total New Revenue (${rangeLabel})`}
-            value={`$${current.posthogRevenue.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-            changeFraction={
-              revenueComparable && previous.posthogRevenue
-                ? weekOverWeekChange(current.posthogRevenue.amount, previous.posthogRevenue.amount)
-                : null
-            }
-            changeLabel={changeLabel}
-            source="posthog"
-          />
-        )}
-        {current.pipeline && (
-          <>
             <KpiCard
-              label={`Total New Pipeline (${rangeLabel})`}
-              value={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
-              changeFraction={
-                pipelineComparable && previous.pipeline
-                  ? weekOverWeekChange(current.pipeline.newPipelineValue, previous.pipeline.newPipelineValue)
-                  : null
-              }
+              label={`Active Users (${rangeLabel})`}
+              value={current.traffic.activeUsers.toLocaleString()}
+              changeFraction={trafficComparable && previous.traffic ? weekOverWeekChange(current.traffic.activeUsers, previous.traffic.activeUsers) : null}
+              changeLabel={changeLabel}
+              source={trafficSource}
+            />
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TrendChart
+              title={`Sessions (${rangeLabel})`}
+              data={sessionsTrend}
+              source="ga4"
+              periodTotal={current.traffic.sessions.toLocaleString()}
+            />
+            {current.traffic.topPages && current.traffic.topPages.length > 0 && (
+              <TopListCard
+                title={`Top Pages by Views (${rangeLabel})`}
+                items={current.traffic.topPages.map((p) => ({ label: p.title, value: p.views }))}
+                source={trafficSource}
+              />
+            )}
+            {current.traffic.channelBreakdown && current.traffic.channelBreakdown.length > 0 ? (
+              <div className="lg:col-span-2">
+                <ChannelBreakdownTable channels={current.traffic.channelBreakdown} rangeLabel={rangeLabel} />
+              </div>
+            ) : (
+              current.traffic.topChannels &&
+              current.traffic.topChannels.length > 0 && (
+                <TopListCard
+                  title={`Sessions by Channel (${rangeLabel})`}
+                  items={current.traffic.topChannels.map((c) => ({ label: c.channel, value: c.sessions }))}
+                  source={trafficSource}
+                />
+              )
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- PRODUCT (self-serve signups / revenue) ---------------- */}
+      {activeTab === "product" && (current.signups || current.posthogRevenue) && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            {current.signups && (
+              <>
+                <KpiCard
+                  label={`Total Signups (${rangeLabel})`}
+                  value={current.signups.signups.toLocaleString()}
+                  changeFraction={signupsComparable && previous.signups ? weekOverWeekChange(current.signups.signups, previous.signups.signups) : null}
+                  changeLabel={changeLabel}
+                  source="posthog"
+                  hint={`Total count of sign-up events over the ${rangeLabel} window, summed from the daily syncs — the same number the Signups chart and the Funnel use. The attribution funnel counts something different (unique, identity-linked people through a saved PostHog funnel), so its signup figure won't match this one.`}
+                />
+                <KpiCard
+                  label="Activation Rate (30d cohort)"
+                  value={`${((cohortActivationRate ?? current.signups.activationRate) * 100).toFixed(1)}%`}
+                  changeFraction={cohortActivationRate != null && prevCohortActivationRate != null ? weekOverWeekChange(cohortActivationRate, prevCohortActivationRate) : null}
+                  changeLabel={`vs ${rangeLabel} ago`}
+                  source="posthog"
+                  hint="Of the distinct users who signed up in the last 30 days, the share who have since hit the activation milestone. A cohort conversion, so it stays between 0–100% — unlike a raw activations-per-signup ratio."
+                />
+              </>
+            )}
+            {current.posthogRevenue && (
+              <KpiCard
+                label={`Total New Revenue (${rangeLabel})`}
+                value={`$${current.posthogRevenue.amount.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
+                changeFraction={revenueComparable && previous.posthogRevenue ? weekOverWeekChange(current.posthogRevenue.amount, previous.posthogRevenue.amount) : null}
+                changeLabel={changeLabel}
+                source="posthog"
+              />
+            )}
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            {current.signups && (
+              <TrendChart
+                title={`Signups (${rangeLabel})`}
+                data={signupsTrend}
+                source="posthog"
+                periodTotal={current.signups.signups.toLocaleString()}
+              />
+            )}
+            {current.posthogRevenue && (
+              <MonthlyBarChart
+                title={`New revenue by month (${rangeLabel})`}
+                data={revenueTrend}
+                source="posthog"
+                valueFormatter={(v) => (v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${v.toLocaleString()}`)}
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- SALES (HubSpot pipeline) ---------------- */}
+      {activeTab === "sales" && current.pipeline && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
+            <KpiCard
+              label={`New Leads (${rangeLabel})`}
+              value={current.pipeline.newContacts.toLocaleString()}
+              changeFraction={pipelineComparable && previous.pipeline ? weekOverWeekChange(current.pipeline.newContacts, previous.pipeline.newContacts) : null}
               changeLabel={changeLabel}
               source="hubspot"
             />
             <KpiCard
               label={`Total New MQLs (${rangeLabel})`}
               value={current.pipeline.newMqls.toLocaleString()}
-              changeFraction={
-                pipelineComparable && previous.pipeline
-                  ? weekOverWeekChange(current.pipeline.newMqls, previous.pipeline.newMqls)
-                  : null
-              }
+              changeFraction={pipelineComparable && previous.pipeline ? weekOverWeekChange(current.pipeline.newMqls, previous.pipeline.newMqls) : null}
               changeLabel={changeLabel}
               source="hubspot"
             />
@@ -293,25 +518,24 @@ export default function CompanyMetricsView({
               <KpiCard
                 label={`Demos Booked (${rangeLabel})`}
                 value={current.pipeline.demosBooked.toLocaleString()}
-                changeFraction={
-                  pipelineComparable && previous.pipeline?.demosBooked != null
-                    ? weekOverWeekChange(current.pipeline.demosBooked, previous.pipeline.demosBooked)
-                    : null
-                }
+                changeFraction={pipelineComparable && previous.pipeline?.demosBooked != null ? weekOverWeekChange(current.pipeline.demosBooked, previous.pipeline.demosBooked) : null}
                 changeLabel={changeLabel}
                 source="hubspot"
                 hint="Meeting engagements booked (created) in HubSpot during the period — the bridge from MQL to a sales conversation. Only counts meetings actually logged in HubSpot, so it reflects CRM hygiene and can read low if reps don't log every call."
               />
             )}
+            <KpiCard
+              label={`Total New Pipeline (${rangeLabel})`}
+              value={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
+              changeFraction={pipelineComparable && previous.pipeline ? weekOverWeekChange(current.pipeline.newPipelineValue, previous.pipeline.newPipelineValue) : null}
+              changeLabel={changeLabel}
+              source="hubspot"
+            />
             {latestDay.pipeline?.winRate != null && (
               <KpiCard
                 label="Win Rate (current)"
                 value={`${(latestDay.pipeline.winRate * 100).toFixed(0)}%`}
-                changeFraction={
-                  pipelineComparable && previousLatestDay?.pipeline?.winRate != null
-                    ? weekOverWeekChange(latestDay.pipeline.winRate, previousLatestDay.pipeline.winRate)
-                    : null
-                }
+                changeFraction={pipelineComparable && previousLatestDay?.pipeline?.winRate != null ? weekOverWeekChange(latestDay.pipeline.winRate, previousLatestDay.pipeline.winRate) : null}
                 changeLabel={`vs ${rangeLabel} ago`}
                 source="hubspot"
                 hint="Won ÷ (won + lost) among deals marked closed in HubSpot over the trailing 30 days. It only counts deals actually logged and closed in the CRM, so it reflects HubSpot hygiene — conversations or deals reps never logged aren't counted and can make this read higher than reality."
@@ -324,29 +548,41 @@ export default function CompanyMetricsView({
                 source="hubspot"
               />
             )}
-          </>
-        )}
-        {current.searchConsole && (
-          <>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TrendChart
+              title={`New pipeline value (${rangeLabel})`}
+              data={pipelineTrend}
+              source="hubspot"
+              periodTotal={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
+            />
+            {latestDay.dealStageFunnel && latestDay.dealStageFunnel.length > 0 && (
+              <FunnelChart
+                title="HubSpot Deal Pipeline (open deals)"
+                stages={latestDay.dealStageFunnel}
+                source="hubspot"
+                mode="snapshot"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- SEO (Search Console) ---------------- */}
+      {activeTab === "seo" && current.searchConsole && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <KpiCard
               label={`Total Search Clicks (${rangeLabel})`}
               value={current.searchConsole.clicks.toLocaleString()}
-              changeFraction={
-                searchComparable && previous.searchConsole
-                  ? weekOverWeekChange(current.searchConsole.clicks, previous.searchConsole.clicks)
-                  : null
-              }
+              changeFraction={searchComparable && previous.searchConsole ? weekOverWeekChange(current.searchConsole.clicks, previous.searchConsole.clicks) : null}
               changeLabel={changeLabel}
               source="searchconsole"
             />
             <KpiCard
               label={`Total Search Impressions (${rangeLabel})`}
               value={current.searchConsole.impressions.toLocaleString()}
-              changeFraction={
-                searchComparable && previous.searchConsole
-                  ? weekOverWeekChange(current.searchConsole.impressions, previous.searchConsole.impressions)
-                  : null
-              }
+              changeFraction={searchComparable && previous.searchConsole ? weekOverWeekChange(current.searchConsole.impressions, previous.searchConsole.impressions) : null}
               changeLabel={changeLabel}
               source="searchconsole"
             />
@@ -354,7 +590,6 @@ export default function CompanyMetricsView({
               label={`Avg Search Position (${rangeLabel})`}
               value={current.searchConsole.position.toFixed(1)}
               changeFraction={(() => {
-                // Lower position is better, so invert the raw change to keep the ▲/▼ color meaningful.
                 if (!searchComparable || !previous.searchConsole) return null;
                 const raw = weekOverWeekChange(current.searchConsole.position, previous.searchConsole.position);
                 return raw === null ? null : -raw;
@@ -362,171 +597,75 @@ export default function CompanyMetricsView({
               changeLabel={changeLabel}
               source="searchconsole"
             />
-          </>
-        )}
-        {current.googleAds && (
-          <>
+          </div>
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TrendChart
+              title={`Search clicks (${rangeLabel})`}
+              data={searchClicksTrend}
+              source="searchconsole"
+              periodTotal={current.searchConsole.clicks.toLocaleString()}
+            />
+            {current.searchConsole.topQueries && current.searchConsole.topQueries.length > 0 && (
+              <TopListCard
+                title={`Top Search Queries (${rangeLabel})`}
+                items={current.searchConsole.topQueries.map((q) => ({ label: q.query, value: q.clicks }))}
+                source="searchconsole"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* ---------------- PAID (Google Ads) ---------------- */}
+      {activeTab === "paid" && current.googleAds && (
+        <div className="space-y-6">
+          <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
             <KpiCard
               label={`Total Ad Spend (${rangeLabel})`}
               value={`$${current.googleAds.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-              changeFraction={
-                googleAdsComparable && previous.googleAds
-                  ? weekOverWeekChange(current.googleAds.cost, previous.googleAds.cost)
-                  : null
-              }
+              changeFraction={googleAdsComparable && previous.googleAds ? weekOverWeekChange(current.googleAds.cost, previous.googleAds.cost) : null}
               changeLabel={changeLabel}
               source="googleads"
             />
             <KpiCard
               label={`Total Ad Clicks (${rangeLabel})`}
               value={current.googleAds.clicks.toLocaleString()}
-              changeFraction={
-                googleAdsComparable && previous.googleAds
-                  ? weekOverWeekChange(current.googleAds.clicks, previous.googleAds.clicks)
-                  : null
-              }
+              changeFraction={googleAdsComparable && previous.googleAds ? weekOverWeekChange(current.googleAds.clicks, previous.googleAds.clicks) : null}
               changeLabel={changeLabel}
               source="googleads"
             />
             <KpiCard
               label={`Total Ad Conversions (${rangeLabel})`}
               value={current.googleAds.conversions.toLocaleString(undefined, { maximumFractionDigits: 1 })}
-              changeFraction={
-                googleAdsComparable && previous.googleAds
-                  ? weekOverWeekChange(current.googleAds.conversions, previous.googleAds.conversions)
-                  : null
-              }
+              changeFraction={googleAdsComparable && previous.googleAds ? weekOverWeekChange(current.googleAds.conversions, previous.googleAds.conversions) : null}
               changeLabel={changeLabel}
               source="googleads"
             />
             <KpiCard
               label={`Avg CPC (${rangeLabel})`}
               value={`$${current.googleAds.cpc.toFixed(2)}`}
-              changeFraction={
-                googleAdsComparable && previous.googleAds
-                  ? weekOverWeekChange(current.googleAds.cpc, previous.googleAds.cpc)
-                  : null
-              }
+              changeFraction={googleAdsComparable && previous.googleAds ? weekOverWeekChange(current.googleAds.cpc, previous.googleAds.cpc) : null}
               changeLabel={changeLabel}
               source="googleads"
             />
-          </>
-        )}
-      </div>
-
-      {/* Both render null until a company's economics/goals are filled in
-          (lib/config/economics.ts), so they stay hidden rather than showing
-          fabricated numbers. */}
-      <GoalsCard goals={goals} rangeLabel={rangeLabel} />
-      <UnitEconomics data={unitEconomics} rangeLabel={rangeLabel} />
-
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        {current.traffic && (
-          <TrendChart
-            title={`Sessions (${rangeLabel})`}
-            data={sessionsTrend}
-            source="ga4"
-            periodTotal={current.traffic.sessions.toLocaleString()}
-          />
-        )}
-        {current.signups && (
-          <TrendChart
-            title={`Signups (${rangeLabel})`}
-            data={signupsTrend}
-            source="posthog"
-            periodTotal={current.signups.signups.toLocaleString()}
-          />
-        )}
-        {current.posthogRevenue && (
-          <MonthlyBarChart
-            title={`New revenue by month (${rangeLabel})`}
-            data={revenueTrend}
-            source="posthog"
-            valueFormatter={(v) =>
-              v >= 1000 ? `$${(v / 1000).toFixed(v % 1000 === 0 ? 0 : 1)}k` : `$${v.toLocaleString()}`
-            }
-          />
-        )}
-        {current.pipeline && (
-          <TrendChart
-            title={`New pipeline value (${rangeLabel})`}
-            data={pipelineTrend}
-            source="hubspot"
-            periodTotal={`$${current.pipeline.newPipelineValue.toLocaleString()}`}
-          />
-        )}
-        {current.searchConsole && (
-          <TrendChart
-            title={`Search clicks (${rangeLabel})`}
-            data={searchClicksTrend}
-            source="searchconsole"
-            periodTotal={current.searchConsole.clicks.toLocaleString()}
-          />
-        )}
-        {current.googleAds && (
-          <TrendChart
-            title={`Ad spend (${rangeLabel})`}
-            data={adSpendTrend}
-            source="googleads"
-            periodTotal={`$${current.googleAds.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
-          />
-        )}
-        <FunnelChart stages={current.funnel} source={funnelSources} />
-        {latestDay.dealStageFunnel && latestDay.dealStageFunnel.length > 0 && (
-          <FunnelChart
-            title="HubSpot Deal Pipeline (open deals)"
-            stages={latestDay.dealStageFunnel}
-            source="hubspot"
-            mode="snapshot"
-          />
-        )}
-        {latestDay.attributionFunnel && latestDay.attributionFunnel.byChannel.length > 0 && (
-          <div className="lg:col-span-2">
-            <AttributionFunnel
-              title={`${latestDay.attributionFunnel.insightName} (30d)`}
-              steps={latestDay.attributionFunnel.steps}
-              byChannel={latestDay.attributionFunnel.byChannel}
-              previousSteps={priorAttributionSteps}
-              caveat="This funnel only counts people PostHog can link across your marketing site and app as the same person. If your site and app don't share identity (e.g. no identify/alias call linking an anonymous marketing-site visit to the later signed-in user), most real conversions won't be counted here even though they happened — treat these as a lower bound, not the true conversion rate. Its counts also won't tie out to the Total Signups card or the Funnel box above: those tally raw sign-up events, while this counts unique identity-linked people through a saved PostHog funnel — a different measure, not a discrepancy."
-            />
           </div>
-        )}
-        {current.traffic?.channelBreakdown && current.traffic.channelBreakdown.length > 0 ? (
-          <div className="lg:col-span-2">
-            <ChannelBreakdownTable channels={current.traffic.channelBreakdown} rangeLabel={rangeLabel} />
-          </div>
-        ) : (
-          current.traffic?.topChannels &&
-          current.traffic.topChannels.length > 0 && (
-            <TopListCard
-              title={`Sessions by Channel (${rangeLabel})`}
-              items={current.traffic.topChannels.map((c) => ({ label: c.channel, value: c.sessions }))}
-              source={trafficSource}
+          <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+            <TrendChart
+              title={`Ad spend (${rangeLabel})`}
+              data={adSpendTrend}
+              source="googleads"
+              periodTotal={`$${current.googleAds.cost.toLocaleString(undefined, { maximumFractionDigits: 0 })}`}
             />
-          )
-        )}
-        {current.traffic?.topPages && current.traffic.topPages.length > 0 && (
-          <TopListCard
-            title={`Top Pages by Views (${rangeLabel})`}
-            items={current.traffic.topPages.map((p) => ({ label: p.title, value: p.views }))}
-            source={trafficSource}
-          />
-        )}
-        {current.searchConsole?.topQueries && current.searchConsole.topQueries.length > 0 && (
-          <TopListCard
-            title={`Top Search Queries (${rangeLabel})`}
-            items={current.searchConsole.topQueries.map((q) => ({ label: q.query, value: q.clicks }))}
-            source="searchconsole"
-          />
-        )}
-        {current.googleAds?.topCampaigns && current.googleAds.topCampaigns.length > 0 && (
-          <TopListCard
-            title={`Top Ad Campaigns by Spend (${rangeLabel})`}
-            items={current.googleAds.topCampaigns.map((c) => ({ label: c.name, value: c.cost }))}
-            source="googleads"
-          />
-        )}
-      </div>
+            {current.googleAds.topCampaigns && current.googleAds.topCampaigns.length > 0 && (
+              <TopListCard
+                title={`Top Ad Campaigns by Spend (${rangeLabel})`}
+                items={current.googleAds.topCampaigns.map((c) => ({ label: c.name, value: c.cost }))}
+                source="googleads"
+              />
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

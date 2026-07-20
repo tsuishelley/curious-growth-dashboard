@@ -3,7 +3,6 @@ import { getCompanyBySlug } from "@/lib/config/portfolio";
 import { getCompanyMetrics } from "@/lib/metrics";
 import { getLatestInsight } from "@/lib/insights";
 import CompanyMetricsView from "@/components/CompanyMetricsView";
-import WeeklyInsights from "@/components/WeeklyInsights";
 
 export const dynamic = "force-dynamic";
 
@@ -22,10 +21,5 @@ export default async function CompanyDashboardPage({ params }: { params: { compa
     getLatestInsight(company.id),
   ]);
 
-  return (
-    <div className="space-y-6">
-      {insight && <WeeklyInsights insight={insight} />}
-      <CompanyMetricsView company={company} metrics={metrics} />
-    </div>
-  );
+  return <CompanyMetricsView company={company} metrics={metrics} insight={insight} />;
 }
