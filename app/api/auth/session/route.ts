@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { adminAuth } from "@/lib/firebase/admin";
-import { ALLOWED_EMAIL_DOMAIN, isAllowedEmail, SESSION_COOKIE_NAME } from "@/lib/auth";
+import { allowedEmailDomains, isAllowedEmail, SESSION_COOKIE_NAME } from "@/lib/auth";
 
 // Firebase Admin needs the Node.js runtime (not Edge).
 export const runtime = "nodejs";
@@ -20,10 +20,13 @@ export async function POST(request: NextRequest) {
       // dashboard still refusing is otherwise indistinguishable from a broken
       // login, and "restricted to curious.vc" reads as a flat no to an approved
       // guest. Only ever echoes the caller's own verified email back to them.
+      const domainHint = allowedEmailDomains()
+        .map((d) => `@${d}`)
+        .join(" or ");
       return NextResponse.json(
         {
           error: `${decoded.email ?? "That account"} is not approved for this dashboard. ` +
-            `Ask Shelley to add it, or sign in with your @${ALLOWED_EMAIL_DOMAIN} account.`,
+            `Ask Shelley to add it, or sign in with your ${domainHint} account.`,
         },
         { status: 403 }
       );

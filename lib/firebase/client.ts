@@ -24,8 +24,10 @@ export function getFirebaseAuth(): Auth {
 
 export function getGoogleProvider(): GoogleAuthProvider {
   const provider = new GoogleAuthProvider();
-  // Nudge Google sign-in toward the curious.vc workspace; the real
-  // enforcement happens server-side in the session route + middleware.
-  provider.setCustomParameters({ hd: "curious.vc" });
+  // Don't lock the chooser to a single hosted domain — approved guests (and any
+  // other allowed domain) must be able to pick their own account. Enforcement of
+  // who's actually allowed happens server-side in the session route + middleware
+  // (isAllowedEmail). `select_account` always shows the chooser.
+  provider.setCustomParameters({ prompt: "select_account" });
   return provider;
 }
